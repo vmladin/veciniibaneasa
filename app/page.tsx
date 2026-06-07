@@ -541,6 +541,99 @@ function ProviderCard({ provider, onOpen }: { provider: Provider; onOpen: () => 
   );
 }
 
+// ── Category dropdown (multi-select) ─────────────────────────────────────────
+
+function CategoryDropdown({ categories, selected, onChange }: {
+  categories: Category[];
+  selected: number[];
+  onChange: (ids: number[]) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  function toggle(id: number) {
+    onChange(selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id]);
+  }
+
+  const label =
+    selected.length === 0
+      ? "Toate categoriile"
+      : selected.length === 1
+      ? (categories.find((c) => c.id === selected[0])?.name ?? "1 categorie")
+      : `${selected.length} categorii selectate`;
+
+  return (
+    <div ref={ref} style={{ position: "relative" }}>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        style={{
+          display: "flex", alignItems: "center", gap: 8,
+          padding: "5px 10px", border: "1.5px solid var(--border)", borderRadius: 8,
+          fontSize: 13, fontFamily: "inherit", fontWeight: 700, color: "var(--vb-text)",
+          background: "var(--card)", outline: "none", cursor: "pointer",
+          minWidth: 180,
+        }}
+      >
+        <span style={{ flex: 1, textAlign: "left" }}>{label}</span>
+        <span style={{ fontSize: 10, color: "var(--vb-text-l)" }}>{open ? "▲" : "▼"}</span>
+      </button>
+
+      {open && (
+        <div style={{
+          position: "absolute", top: "calc(100% + 6px)", left: 0,
+          background: "var(--card)", border: "1.5px solid var(--border)",
+          borderRadius: 12, boxShadow: "var(--vb-shadow-hv)", zIndex: 150,
+          minWidth: 220, maxHeight: 340, overflowY: "auto", padding: "6px 0",
+        }}>
+          {/* All option */}
+          <button
+            onClick={() => { onChange([]); setOpen(false); }}
+            style={{
+              width: "100%", padding: "9px 14px", textAlign: "left", border: "none",
+              background: selected.length === 0 ? "var(--vb-accent-lt)" : "transparent",
+              cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 13,
+              color: selected.length === 0 ? "var(--vb-accent)" : "var(--vb-text)",
+              display: "flex", alignItems: "center", gap: 8,
+            }}
+          >
+            🏘️ Toate categoriile
+          </button>
+          <div style={{ height: 1, background: "var(--border)", margin: "4px 0" }} />
+          {categories.map((c) => {
+            const active = selected.includes(c.id);
+            return (
+              <label
+                key={c.id}
+                style={{
+                  display: "flex", alignItems: "center", gap: 10,
+                  padding: "9px 14px", cursor: "pointer",
+                  background: active ? "var(--vb-accent-lt)" : "transparent",
+                  fontSize: 13, fontWeight: 700,
+                  color: active ? "var(--vb-accent)" : "var(--vb-text-m)",
+                }}
+              >
+                <input
+                  type="checkbox" checked={active} onChange={() => toggle(c.id)}
+                  style={{ accentColor: "var(--vb-accent)", width: 15, height: 15, cursor: "pointer" }}
+                />
+                {c.icon} {c.name}
+              </label>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── House logo ─────────────────────────────────────────────────────────────────
 
 function HouseLogo() {
@@ -557,7 +650,7 @@ function HouseLogo() {
 export default function HomePage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [providers, setProviders] = useState<Provider[]>([]);
-  const [activeCat, setActiveCat] = useState<number | "all">("all");
+  const [selectedCats, setSelectedCats] = useState<number[]>([]);
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState("rating");
   const [detailProvider, setDetailProvider] = useState<Provider | null>(null);
@@ -576,15 +669,19 @@ export default function HomePage() {
   const loadProviders = useCallback(async () => {
     setLoading(true);
     const params = new URLSearchParams();
-    if (activeCat !== "all") params.set("category", String(activeCat));
     if (search) params.set("search", search);
     params.set("sort", sortBy);
     const data = await fetch(`/api/providers?${params}`).then((r) => r.json());
     setProviders(data);
     setLoading(false);
-  }, [activeCat, search, sortBy]);
+  }, [search, sortBy]);
 
   useEffect(() => { loadProviders(); }, [loadProviders]);
+
+  const filteredProviders = useMemo(() =>
+    selectedCats.length === 0 ? providers : providers.filter((p) => selectedCats.includes(p.categoryId)),
+    [providers, selectedCats]
+  );
 
   const catCounts = useMemo(() => {
     const m: Record<number, number> = {};
@@ -633,29 +730,14 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* ── Categories ── */}
-      <div className="vb-cat-scroll-wrap"><div className="vb-cat-scroll">
-        <button className={`vb-cat-chip${activeCat === "all" ? " active" : ""}`} onClick={() => setActiveCat("all")}>
-          🏘️ Toți
-        </button>
-        {categories.map((c) => (
-          <button key={c.id} className={`vb-cat-chip${activeCat === c.id ? " active" : ""}`}
-            onClick={() => setActiveCat(activeCat === c.id ? "all" : c.id)}>
-            {c.icon} {c.name}
-            {catCounts[c.id] > 0 && (
-              <span style={{ background: activeCat === c.id ? "rgba(255,255,255,0.25)" : "var(--border)", borderRadius: "50%", minWidth: 18, height: 18, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 800 }}>
-                {catCounts[c.id]}
-              </span>
-            )}
-          </button>
-        ))}
-      </div></div>
-
-      {/* ── Sort bar ── */}
+      {/* ── Filter / Sort bar ── */}
       <div className="vb-sort-bar">
-        <span className="vb-sort-count">
-          {loading ? "Se încarcă..." : `${providers.length} furnizor${providers.length !== 1 ? "i" : ""}`}
-        </span>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <CategoryDropdown categories={categories} selected={selectedCats} onChange={setSelectedCats} />
+          <span className="vb-sort-count">
+            {loading ? "Se încarcă..." : `${filteredProviders.length} furnizor${filteredProviders.length !== 1 ? "i" : ""}`}
+          </span>
+        </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 13, color: "var(--vb-text-l)" }}>Sortează:</span>
           <select className="vb-sort-select" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
@@ -669,18 +751,18 @@ export default function HomePage() {
       {/* ── Grid ── */}
       {loading ? (
         <div style={{ textAlign: "center", padding: "72px 24px", color: "var(--vb-text-l)", fontSize: 15 }}>Se încarcă...</div>
-      ) : providers.length === 0 ? (
+      ) : filteredProviders.length === 0 ? (
         <div style={{ textAlign: "center", padding: "72px 24px" }}>
           <div style={{ fontSize: 52, marginBottom: 14 }}>🏘️</div>
           <h3 style={{ fontSize: 20, fontWeight: 800, marginBottom: 8 }}>Niciun furnizor găsit</h3>
           <p style={{ color: "var(--vb-text-m)", marginBottom: 24, fontSize: 15 }}>
-            {search ? `Niciun rezultat pentru „${search}"` : "Fii primul care adaugă un furnizor în această categorie!"}
+            {search ? `Niciun rezultat pentru „${search}"` : "Fii primul care adaugă un furnizor!"}
           </p>
           <button className="vb-btn-primary" onClick={() => setShowAdd(true)}>+ Adaugă Furnizor</button>
         </div>
       ) : (
         <div className="vb-grid">
-          {providers.map((p) => (
+          {filteredProviders.map((p) => (
             <ProviderCard key={p.id} provider={p} onOpen={() => openDetail(p)} />
           ))}
         </div>
