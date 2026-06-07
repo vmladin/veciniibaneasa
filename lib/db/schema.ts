@@ -5,6 +5,7 @@ import {
   varchar,
   integer,
   real,
+  boolean,
   timestamp,
   unique,
 } from "drizzle-orm/pg-core";
@@ -55,6 +56,18 @@ export const reviews = pgTable(
   },
   (t) => [unique("one_review_per_user").on(t.providerId, t.userUuid)]
 );
+
+export const reports = pgTable("reports", {
+  id: serial("id").primaryKey(),
+  providerId: integer("provider_id")
+    .notNull()
+    .references(() => providers.id, { onDelete: "cascade" }),
+  providerName: varchar("provider_name", { length: 200 }).notNull(),
+  reasons: text("reasons").notNull(),
+  details: text("details"),
+  resolved: boolean("resolved").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
 
 export type Category = typeof categories.$inferSelect;
 export type Provider = typeof providers.$inferSelect;
