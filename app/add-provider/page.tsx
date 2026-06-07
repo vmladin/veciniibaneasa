@@ -1,32 +1,19 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getUserUuid, getNickname, setNickname } from "@/lib/user-identity";
-import { MapPin, Loader2 } from "lucide-react";
+import { Loader2, MapPin } from "lucide-react";
 
-interface Category {
-  id: number;
-  name: string;
-  icon: string;
-}
+interface Category { id: number; name: string; icon: string }
 
 export default function AddProviderPage() {
   const router = useRouter();
   const [categories, setCategories] = useState<Category[]>([]);
   const [nickname, setNicknameState] = useState("");
   const [form, setForm] = useState({
-    name: "",
-    phone: "",
-    email: "",
-    description: "",
-    services: "",
-    categoryId: "",
-    address: "",
+    name: "", phone: "", whatsapp: "", email: "", description: "", services: "",
+    priceRange: "", hours: "", zone: "", website: "", social: "", categoryId: "", address: "",
   });
   const [lat, setLat] = useState<number | null>(null);
   const [lng, setLng] = useState<number | null>(null);
@@ -37,201 +24,102 @@ export default function AddProviderPage() {
 
   useEffect(() => {
     setNicknameState(getNickname());
-    fetch("/api/categories")
-      .then((r) => r.json())
-      .then(setCategories);
+    fetch("/api/categories").then((r) => r.json()).then(setCategories);
   }, []);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    setForm((p) => ({ ...p, [e.target.name]: e.target.value }));
   }
 
   async function geocodeAddress() {
     if (!form.address.trim()) return;
-    setGeocoding(true);
-    setGeocodeError("");
+    setGeocoding(true); setGeocodeError("");
     try {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(form.address)}&format=json&limit=1`,
-        { headers: { "Accept-Language": "ro" } }
-      );
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(form.address)}&format=json&limit=1`, { headers: { "Accept-Language": "ro" } });
       const data = await res.json();
-      if (data.length > 0) {
-        setLat(parseFloat(data[0].lat));
-        setLng(parseFloat(data[0].lon));
-        setGeocodeError("");
-      } else {
-        setGeocodeError("Adresa nu a fost găsită. Verifică și încearcă din nou.");
-      }
-    } catch {
-      setGeocodeError("Eroare la căutarea adresei.");
-    } finally {
-      setGeocoding(false);
-    }
+      if (data.length > 0) { setLat(parseFloat(data[0].lat)); setLng(parseFloat(data[0].lon)); }
+      else setGeocodeError("Adresa nu a fost găsită.");
+    } catch { setGeocodeError("Eroare la căutarea adresei."); }
+    finally { setGeocoding(false); }
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.name || !form.categoryId) {
-      setError("Numele și categoria sunt obligatorii.");
-      return;
+    if (!form.name || !form.categoryId || !form.phone || !form.description) {
+      setError("Numele, categoria, telefonul și descrierea sunt obligatorii."); return;
     }
-    if (!nickname.trim()) {
-      setError("Te rugăm să introduci porecla/numele tău.");
-      return;
-    }
-
-    setSubmitting(true);
-    setError("");
+    setSubmitting(true); setError("");
     setNickname(nickname);
-
-    const payload = {
-      ...form,
-      categoryId: parseInt(form.categoryId),
-      lat: lat ?? null,
-      lng: lng ?? null,
-      addedByNickname: nickname,
-      userUuid: getUserUuid(),
-    };
-
     const res = await fetch("/api/providers", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ ...form, categoryId: parseInt(form.categoryId), lat, lng, addedByNickname: nickname || "Vecin anonim" }),
     });
-
-    if (res.ok) {
-      const provider = await res.json();
-      router.push(`/providers/${provider.id}`);
-    } else {
-      setError("A apărut o eroare. Încearcă din nou.");
-      setSubmitting(false);
-    }
+    if (res.ok) { router.push("/"); }
+    else { setError("A apărut o eroare. Încearcă din nou."); setSubmitting(false); }
   }
 
+  const inputCls = "w-full px-4 py-3 rounded-xl border text-sm font-[inherit] outline-none transition-colors focus:border-[var(--vb-accent)]";
+
   return (
-    <main className="max-w-2xl mx-auto px-4 py-8">
-      <Card>
-        <CardHeader>
-          <CardTitle>Adaugă un furnizor de servicii</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <div>
-              <label className="text-sm font-medium mb-1 block">Porecla / numele tău *</label>
-              <Input
-                placeholder="ex: Maria din bloc 3"
-                value={nickname}
-                onChange={(e) => setNicknameState(e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Salvat local în browser. Apare la recenziile tale.
-              </p>
-            </div>
+    <main style={{ maxWidth: 640, margin: "0 auto", padding: "32px 16px 64px" }}>
+      <div style={{ background: "var(--card)", borderRadius: 20, padding: 32, boxShadow: "var(--vb-shadow)", border: "1.5px solid var(--border)" }}>
+        <h1 style={{ fontSize: 22, fontWeight: 900, marginBottom: 24 }}>Adaugă un furnizor de servicii</h1>
+        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
 
-            <div>
-              <label className="text-sm font-medium mb-1 block">Categorie *</label>
-              <select
-                name="categoryId"
-                value={form.categoryId}
-                onChange={handleChange}
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                required
-              >
-                <option value="">Alege categoria...</option>
-                {categories.map((cat) => (
-                  <option key={cat.id} value={cat.id}>
-                    {cat.icon} {cat.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+          <input className="vb-form-input" placeholder="Porecla / numele tău (opțional)" value={nickname} onChange={(e) => setNicknameState(e.target.value)} />
 
-            <div>
-              <label className="text-sm font-medium mb-1 block">Nume furnizor *</label>
-              <Input name="name" placeholder="ex: Ion Popescu" value={form.name} onChange={handleChange} required />
-            </div>
+          <select name="categoryId" value={form.categoryId} onChange={handleChange} className="vb-form-input" required>
+            <option value="">Alege categoria *</option>
+            {categories.map((c) => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
+          </select>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium mb-1 block">Telefon</label>
-                <Input name="phone" placeholder="07xx xxx xxx" value={form.phone} onChange={handleChange} />
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-1 block">Email</label>
-                <Input name="email" type="email" placeholder="email@exemplu.ro" value={form.email} onChange={handleChange} />
-              </div>
-            </div>
+          <input name="name" className="vb-form-input" placeholder="Numele furnizorului *" value={form.name} onChange={handleChange} required />
 
-            <div>
-              <label className="text-sm font-medium mb-1 block">Descriere</label>
-              <Textarea
-                name="description"
-                placeholder="Câteva cuvinte despre furnizor..."
-                value={form.description}
-                onChange={handleChange}
-                rows={3}
-              />
-            </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <input name="phone" className="vb-form-input" placeholder="Telefon *" value={form.phone} onChange={handleChange} />
+            <input name="whatsapp" className="vb-form-input" placeholder="WhatsApp (ex: 40721...)" value={form.whatsapp} onChange={handleChange} />
+          </div>
 
-            <div>
-              <label className="text-sm font-medium mb-1 block">Servicii oferite</label>
-              <Textarea
-                name="services"
-                placeholder="ex: Instalare aer condiționat, revizie, reparații..."
-                value={form.services}
-                onChange={handleChange}
-                rows={2}
-              />
-            </div>
+          <textarea name="description" className="vb-form-input" placeholder="Descriere servicii *" rows={3} value={form.description} onChange={handleChange} style={{ resize: "vertical" }} />
 
-            <div>
-              <label className="text-sm font-medium mb-1 block">
-                Adresă fizică (opțional — pentru servicii la sediu)
-              </label>
-              <div className="flex gap-2">
-                <Input
-                  name="address"
-                  placeholder="ex: Str. Aeroportului 12, Sector 1, București"
-                  value={form.address}
-                  onChange={(e) => {
-                    handleChange(e);
-                    setLat(null);
-                    setLng(null);
-                  }}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={geocodeAddress}
-                  disabled={!form.address || geocoding}
-                  className="shrink-0"
-                >
-                  {geocoding ? <Loader2 size={16} className="animate-spin" /> : <MapPin size={16} />}
-                </Button>
-              </div>
-              {geocodeError && <p className="text-xs text-destructive mt-1">{geocodeError}</p>}
-              {lat && lng && (
-                <p className="text-xs text-green-600 mt-1">
-                  ✓ Locație găsită ({lat.toFixed(4)}, {lng.toFixed(4)}) — harta va fi afișată pe pagina furnizorului.
-                </p>
-              )}
-            </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <input name="priceRange" className="vb-form-input" placeholder="Interval preț (ex: 100–300 RON)" value={form.priceRange} onChange={handleChange} />
+            <input name="hours" className="vb-form-input" placeholder="Program (ex: L–V 8:00–18:00)" value={form.hours} onChange={handleChange} />
+          </div>
 
-            {error && <p className="text-sm text-destructive">{error}</p>}
+          <input name="zone" className="vb-form-input" placeholder="Zonă deservită (ex: Băneasa, Pipera)" value={form.zone} onChange={handleChange} />
 
-            <div className="flex gap-3 pt-2">
-              <Button type="submit" disabled={submitting} className="flex-1">
-                {submitting ? <Loader2 size={16} className="animate-spin mr-2" /> : null}
-                Adaugă furnizorul
-              </Button>
-              <Button type="button" variant="outline" onClick={() => router.back()}>
-                Anulează
-              </Button>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <input name="website" className="vb-form-input" placeholder="Website (opțional)" value={form.website} onChange={handleChange} />
+            <input name="social" className="vb-form-input" placeholder="Instagram / social (opțional)" value={form.social} onChange={handleChange} />
+          </div>
+
+          <input name="email" type="email" className="vb-form-input" placeholder="Email (opțional)" value={form.email} onChange={handleChange} />
+
+          <div>
+            <p style={{ fontSize: 12, color: "var(--vb-text-l)", marginBottom: 6 }}>Adresă fizică (opțional — pentru servicii la sediu)</p>
+            <div style={{ display: "flex", gap: 8 }}>
+              <input name="address" className="vb-form-input" placeholder="ex: Str. Aeroportului 12, Sector 1" value={form.address} onChange={(e) => { handleChange(e); setLat(null); setLng(null); }} style={{ flex: 1 }} />
+              <button type="button" onClick={geocodeAddress} disabled={!form.address || geocoding}
+                style={{ padding: "11px 14px", borderRadius: 10, border: "1.5px solid var(--border)", background: "var(--card)", cursor: "pointer", flexShrink: 0 }}>
+                {geocoding ? <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} /> : <MapPin size={16} />}
+              </button>
             </div>
-          </form>
-        </CardContent>
-      </Card>
+            {geocodeError && <p style={{ fontSize: 12, color: "oklch(0.55 0.10 22)", marginTop: 4 }}>{geocodeError}</p>}
+            {lat && lng && <p style={{ fontSize: 12, color: "oklch(0.45 0.10 148)", marginTop: 4 }}>✓ Locație găsită ({lat.toFixed(4)}, {lng.toFixed(4)})</p>}
+          </div>
+
+          {error && <p style={{ color: "oklch(0.55 0.10 22)", fontSize: 14 }}>{error}</p>}
+
+          <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
+            <button type="submit" className="vb-btn-primary" disabled={submitting} style={{ flex: 1, padding: 14, fontSize: 15 }}>
+              {submitting ? "Se adaugă..." : "Adaugă Furnizorul"}
+            </button>
+            <button type="button" className="vb-btn-outline" onClick={() => router.back()}>Anulează</button>
+          </div>
+        </form>
+      </div>
     </main>
   );
 }

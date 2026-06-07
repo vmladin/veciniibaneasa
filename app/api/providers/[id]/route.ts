@@ -12,12 +12,19 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       id: providers.id,
       name: providers.name,
       phone: providers.phone,
+      whatsapp: providers.whatsapp,
       email: providers.email,
       description: providers.description,
       services: providers.services,
+      priceRange: providers.priceRange,
+      hours: providers.hours,
+      zone: providers.zone,
+      website: providers.website,
+      social: providers.social,
       categoryId: providers.categoryId,
       categoryName: categories.name,
       categoryIcon: categories.icon,
+      categorySlug: categories.slug,
       address: providers.address,
       lat: providers.lat,
       lng: providers.lng,
@@ -31,7 +38,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     .leftJoin(categories, eq(providers.categoryId, categories.id))
     .leftJoin(reviews, eq(providers.id, reviews.providerId))
     .where(eq(providers.id, providerId))
-    .groupBy(providers.id, categories.name, categories.icon);
+    .groupBy(providers.id, categories.name, categories.icon, categories.slug);
 
   if (!row) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
@@ -52,11 +59,20 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   }
 
   const body = await req.json();
-  const { name, phone, email, description, services, categoryId, address, lat, lng } = body;
+  const {
+    name, phone, whatsapp, email, description, services,
+    priceRange, hours, zone, website, social,
+    categoryId, address, lat, lng,
+  } = body;
 
   const [updated] = await db
     .update(providers)
-    .set({ name, phone, email, description, services, categoryId, address, lat, lng, updatedAt: new Date() })
+    .set({
+      name, phone, whatsapp, email, description, services,
+      priceRange, hours, zone, website, social,
+      categoryId, address, lat, lng,
+      updatedAt: new Date(),
+    })
     .where(eq(providers.id, parseInt(id)))
     .returning();
 

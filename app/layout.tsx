@@ -1,8 +1,12 @@
 import type { Metadata } from "next";
-import { Geist } from "next/font/google";
+import { Nunito } from "next/font/google";
 import "./globals.css";
 
-const geist = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
+const nunito = Nunito({
+  variable: "--font-nunito",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800", "900"],
+});
 
 export const metadata: Metadata = {
   title: "Vecinii Băneasa — Servicii locale",
@@ -11,7 +15,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ro" className={`${geist.variable} h-full antialiased`}>
+    <html lang="ro" className={nunito.variable}>
       <body className="min-h-full flex flex-col bg-background text-foreground">
         {children}
       </body>

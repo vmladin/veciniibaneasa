@@ -20,9 +20,15 @@ export const providers = pgTable("providers", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 200 }).notNull(),
   phone: varchar("phone", { length: 50 }),
+  whatsapp: varchar("whatsapp", { length: 50 }),
   email: varchar("email", { length: 200 }),
   description: text("description"),
   services: text("services"),
+  priceRange: varchar("price_range", { length: 100 }),
+  hours: varchar("hours", { length: 200 }),
+  zone: varchar("zone", { length: 200 }),
+  website: varchar("website", { length: 200 }),
+  social: varchar("social", { length: 200 }),
   categoryId: integer("category_id")
     .notNull()
     .references(() => categories.id),
