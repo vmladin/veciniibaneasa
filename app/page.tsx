@@ -513,7 +513,7 @@ function ReportModal({ provider, onClose, onDone }: {
 
 // ── Provider card ─────────────────────────────────────────────────────────────
 
-function ProviderCard({ provider, onOpen }: { provider: Provider; onOpen: () => void }) {
+function ProviderCard({ provider, onOpen, onShare }: { provider: Provider; onOpen: () => void; onShare: () => void }) {
   const rating = Number(provider.avgRating) || 0;
   const waHref = provider.whatsapp
     ? `https://wa.me/${provider.whatsapp.replace(/\D/g, "")}`
@@ -529,6 +529,15 @@ function ProviderCard({ provider, onOpen }: { provider: Provider; onOpen: () => 
           <div style={{ fontWeight: 800, fontSize: 15.5, marginBottom: 5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{provider.name}</div>
           <span className="vb-cat-badge">{provider.categoryIcon} {provider.categoryName}</span>
         </div>
+        <button
+          onClick={(e) => { e.stopPropagation(); onShare(); }}
+          title="Distribuie"
+          style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "var(--vb-text-l)", fontSize: 15, lineHeight: 1, borderRadius: 6, flexShrink: 0 }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = "var(--vb-accent)")}
+          onMouseLeave={(e) => (e.currentTarget.style.color = "var(--vb-text-l)")}
+        >
+          ↗
+        </button>
       </div>
       {provider.description && (
         <p style={{ fontSize: 13.5, color: "var(--vb-text-m)", lineHeight: 1.55, marginBottom: 12, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
@@ -694,6 +703,17 @@ export default function HomePage() {
 
   useEffect(() => { loadProviders(); }, [loadProviders]);
 
+  useEffect(() => {
+    if (loading) return;
+    const id = new URLSearchParams(window.location.search).get("p");
+    if (!id) return;
+    const found = providers.find((p) => p.id === Number(id));
+    if (found) {
+      openDetail(found);
+      window.history.replaceState(null, "", "/");
+    }
+  }, [loading, providers]);
+
   const filteredProviders = useMemo(() =>
     selectedCats.length === 0 ? providers : providers.filter((p) => selectedCats.includes(p.categoryId)),
     [providers, selectedCats]
@@ -708,6 +728,16 @@ export default function HomePage() {
   async function openDetail(provider: Provider) {
     const data = await fetch(`/api/providers/${provider.id}`).then((r) => r.json());
     setDetailProvider(data);
+  }
+
+  async function shareProvider(provider: Provider) {
+    const url = `${window.location.origin}/?p=${provider.id}`;
+    if (navigator.share) {
+      await navigator.share({ title: provider.name, text: `${provider.categoryIcon ?? ""} ${provider.name} — recomandat pe Vecinii Băneasa`, url });
+    } else {
+      await navigator.clipboard.writeText(url);
+      flash("Link copiat! 🔗");
+    }
   }
 
   function handleReview(id: number) {
@@ -779,7 +809,7 @@ export default function HomePage() {
       ) : (
         <div className="vb-grid">
           {filteredProviders.map((p) => (
-            <ProviderCard key={p.id} provider={p} onOpen={() => openDetail(p)} />
+            <ProviderCard key={p.id} provider={p} onOpen={() => openDetail(p)} onShare={() => shareProvider(p)} />
           ))}
         </div>
       )}
