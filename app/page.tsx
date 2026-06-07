@@ -477,9 +477,24 @@ function ReportModal({ provider, onClose, onDone }: {
     </Modal>
   );
 
+  const [sending, setSending] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setSending(true);
+    await fetch("/api/reports", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ providerName: provider.name, providerId: provider.id, reasons: sel, details }),
+    });
+    setSending(false);
+    setSent(true);
+    setTimeout(onDone, 1800);
+  }
+
   return (
     <Modal onClose={onClose} title={`Raportează — ${provider.name}`} size="sm">
-      <form onSubmit={(e) => { e.preventDefault(); setSent(true); setTimeout(onDone, 1800); }}>
+      <form onSubmit={handleSubmit}>
         <p style={{ fontSize: 13.5, color: "var(--vb-text-m)", marginBottom: 14 }}>Selectează motivul raportării:</p>
         {REASONS.map((r) => (
           <label key={r} className="vb-check-item">
@@ -489,7 +504,9 @@ function ReportModal({ provider, onClose, onDone }: {
         <div style={{ height: 14 }} />
         <textarea className="vb-form-input" placeholder="Detalii suplimentare (opțional)" rows={3}
           value={details} onChange={(e) => setDetails(e.target.value)} style={{ marginBottom: 16, resize: "vertical" }} />
-        <button type="submit" className="vb-btn-primary" style={{ width: "100%", padding: 12 }}>Trimite Raportul</button>
+        <button type="submit" className="vb-btn-primary" style={{ width: "100%", padding: 12 }} disabled={sending || sel.length === 0}>
+          {sending ? "Se trimite..." : "Trimite Raportul"}
+        </button>
       </form>
     </Modal>
   );
