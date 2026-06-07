@@ -804,6 +804,37 @@ export default function HomePage() {
 
       {/* ── Toast ── */}
       {toast && <div className="vb-toast">{toast}</div>}
+
+      {/* ── Support pill ── */}
+      <a
+        href="https://revolut.me/vmladin"
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{
+          position: "fixed",
+          bottom: 20,
+          right: 20,
+          display: "flex",
+          alignItems: "center",
+          gap: 7,
+          padding: "8px 14px",
+          borderRadius: 999,
+          background: "var(--card)",
+          border: "1px solid var(--border)",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.10)",
+          fontSize: 13,
+          fontWeight: 500,
+          color: "var(--vb-text-m)",
+          textDecoration: "none",
+          opacity: 0.75,
+          transition: "opacity 0.15s",
+          zIndex: 50,
+        }}
+        onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
+        onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.75")}
+      >
+        <span style={{ fontSize: 16 }}>☕</span> Susține proiectul
+      </a>
     </div>
   );
 }
