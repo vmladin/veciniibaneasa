@@ -700,7 +700,7 @@ export default function HomePage() {
   const [providers, setProviders] = useState<Provider[]>([]);
   const [selectedCats, setSelectedCats] = useState<number[]>([]);
   const [search, setSearch] = useState("");
-  const [sortBy, setSortBy] = useState("rating");
+  const [sortBy, setSortBy] = useState("newest");
   const [detailProvider, setDetailProvider] = useState<Provider | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [reviewProvider, setReviewProvider] = useState<Provider | null>(null);
