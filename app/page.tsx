@@ -529,15 +529,6 @@ function ProviderCard({ provider, onOpen, onShare }: { provider: Provider; onOpe
           <div style={{ fontWeight: 800, fontSize: 15.5, marginBottom: 5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{provider.name}</div>
           <span className="vb-cat-badge">{provider.categoryIcon} {provider.categoryName}</span>
         </div>
-        <button
-          onClick={(e) => { e.stopPropagation(); onShare(); }}
-          title="Distribuie"
-          style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "var(--vb-text-l)", fontSize: 15, lineHeight: 1, borderRadius: 6, flexShrink: 0 }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = "var(--vb-accent)")}
-          onMouseLeave={(e) => (e.currentTarget.style.color = "var(--vb-text-l)")}
-        >
-          ↗
-        </button>
       </div>
       {provider.description && (
         <p style={{ fontSize: 13.5, color: "var(--vb-text-m)", lineHeight: 1.55, marginBottom: 12, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
@@ -554,13 +545,25 @@ function ProviderCard({ provider, onOpen, onShare }: { provider: Provider; onOpe
         {provider.priceRange && <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, color: "var(--vb-text-m)" }}><span>💰</span><span>{provider.priceRange}</span></div>}
         {provider.hours     && <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, color: "var(--vb-text-m)" }}><span>🕐</span><span>{provider.hours}</span></div>}
       </div>
-      <div style={{ display: "flex", gap: 8 }}>
+      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
         {provider.phone && (
           <a className="vb-btn-phone" href={`tel:${provider.phone.replace(/\s/g, "")}`} onClick={(e) => e.stopPropagation()}>📞 Sună</a>
         )}
         {waHref && (
           <a className="vb-btn-wa" href={waHref} target="_blank" rel="noopener" onClick={(e) => e.stopPropagation()}>💬 WhatsApp</a>
         )}
+        <button
+          onClick={(e) => { e.stopPropagation(); onShare(); }}
+          title="Distribuie"
+          style={{ marginLeft: "auto", display: "flex", alignItems: "center", justifyContent: "center", width: 34, height: 34, borderRadius: 8, border: "1.5px solid var(--border)", background: "var(--card)", cursor: "pointer", color: "var(--vb-text-m)", flexShrink: 0, transition: "border-color 0.15s, color 0.15s" }}
+          onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--vb-accent)"; e.currentTarget.style.color = "var(--vb-accent)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "var(--vb-text-m)"; }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+          </svg>
+        </button>
       </div>
     </div>
   );
