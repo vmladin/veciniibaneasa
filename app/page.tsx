@@ -465,19 +465,9 @@ function ReportModal({ provider, onClose, onDone }: {
   const [sel, setSel] = useState<string[]>([]);
   const [details, setDetails] = useState("");
   const [sent, setSent] = useState(false);
+  const [sending, setSending] = useState(false);
 
   const toggle = (r: string) => setSel((p) => p.includes(r) ? p.filter((x) => x !== r) : [...p, r]);
-
-  if (sent) return (
-    <Modal onClose={onClose} title="Raport trimis" size="sm">
-      <div style={{ textAlign: "center", padding: "24px 0" }}>
-        <div style={{ fontSize: 44, marginBottom: 12 }}>✓</div>
-        <p style={{ color: "var(--vb-text-m)", fontSize: 15 }}>Mulțumim! Raportul tău a fost trimis.</p>
-      </div>
-    </Modal>
-  );
-
-  const [sending, setSending] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -491,6 +481,15 @@ function ReportModal({ provider, onClose, onDone }: {
     setSent(true);
     setTimeout(onDone, 1800);
   }
+
+  if (sent) return (
+    <Modal onClose={onClose} title="Raport trimis" size="sm">
+      <div style={{ textAlign: "center", padding: "24px 0" }}>
+        <div style={{ fontSize: 44, marginBottom: 12 }}>✓</div>
+        <p style={{ color: "var(--vb-text-m)", fontSize: 15 }}>Mulțumim! Raportul tău a fost trimis.</p>
+      </div>
+    </Modal>
+  );
 
   return (
     <Modal onClose={onClose} title={`Raportează — ${provider.name}`} size="sm">
