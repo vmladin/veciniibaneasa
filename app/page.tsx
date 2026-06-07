@@ -217,27 +217,59 @@ function DetailModal({ provider, onClose, onReview, onReport }: {
 }
 
 // ── Add provider modal ────────────────────────────────────────────────────────
+// NOTE: All inputs are inlined — never define sub-components inside a component
+// body, as React recreates them on every render causing inputs to lose focus.
 
 function AddProviderModal({ categories, onClose, onAdded }: {
   categories: Category[]; onClose: () => void; onAdded: () => void;
 }) {
   const [nickname, setNicknameState] = useState(getNickname());
-  const [form, setForm] = useState({
-    name: "", categoryId: "", phone: "", whatsapp: "", description: "",
-    priceRange: "", hours: "", zone: "", website: "", social: "",
-  });
-  const [err, setErr] = useState<Record<string, string>>({});
-  const [submitting, setSubmitting] = useState(false);
+  const [name, setName]               = useState("");
+  const [categoryId, setCategoryId]   = useState("");
+  const [phone, setPhone]             = useState("");
+  const [whatsapp, setWhatsapp]       = useState("");
+  const [description, setDescription] = useState("");
+  const [priceRange, setPriceRange]   = useState("");
+  const [hours, setHours]             = useState("");
+  const [zoneOrAddress, setZoneOrAddress] = useState("");
+  const [lat, setLat]                 = useState<number | null>(null);
+  const [lng, setLng]                 = useState<number | null>(null);
+  const [geocoding, setGeocoding]     = useState(false);
+  const [geocodeMsg, setGeocodeMsg]   = useState("");
+  const [website, setWebsite]         = useState("");
+  const [social, setSocial]           = useState("");
+  const [err, setErr]                 = useState<Record<string, string>>({});
+  const [submitting, setSubmitting]   = useState(false);
 
-  const set = (k: string, v: string) => setForm((p) => ({ ...p, [k]: v }));
+  async function geocode() {
+    if (!zoneOrAddress.trim()) return;
+    setGeocoding(true); setGeocodeMsg("");
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(zoneOrAddress)}&format=json&limit=1`,
+        { headers: { "Accept-Language": "ro" } }
+      );
+      const data = await res.json();
+      if (data.length > 0) {
+        setLat(parseFloat(data[0].lat));
+        setLng(parseFloat(data[0].lon));
+        setGeocodeMsg("✓ Locație exactă găsită — harta va afișa pinul precis.");
+      } else {
+        setGeocodeMsg("Adresa nu a fost găsită — va fi folosită zona ca aproximare.");
+      }
+    } catch {
+      setGeocodeMsg("Eroare la geocodare — va fi folosită zona ca aproximare.");
+    }
+    setGeocoding(false);
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     const errors: Record<string, string> = {};
-    if (!form.name.trim()) errors.name = "Câmp obligatoriu";
-    if (!form.categoryId) errors.categoryId = "Câmp obligatoriu";
-    if (!form.phone.trim()) errors.phone = "Câmp obligatoriu";
-    if (!form.description.trim()) errors.description = "Câmp obligatoriu";
+    if (!name.trim()) errors.name = "Câmp obligatoriu";
+    if (!categoryId) errors.categoryId = "Câmp obligatoriu";
+    if (!phone.trim()) errors.phone = "Câmp obligatoriu";
+    if (!description.trim()) errors.description = "Câmp obligatoriu";
     if (Object.keys(errors).length) { setErr(errors); return; }
 
     setSubmitting(true);
@@ -245,55 +277,107 @@ function AddProviderModal({ categories, onClose, onAdded }: {
     const res = await fetch("/api/providers", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, categoryId: parseInt(form.categoryId), addedByNickname: nickname || "Vecin anonim", userUuid: getUserUuid() }),
+      body: JSON.stringify({
+        name, phone, whatsapp, description, priceRange, hours,
+        zone: zoneOrAddress, lat, lng, website, social,
+        categoryId: parseInt(categoryId),
+        addedByNickname: nickname || "Vecin anonim",
+        userUuid: getUserUuid(),
+      }),
     });
     setSubmitting(false);
     if (res.ok) { onAdded(); onClose(); }
   }
 
-  const Field = ({ k, ph, type = "text", rows }: { k: string; ph: string; type?: string; rows?: number }) => (
-    <div style={{ marginBottom: 14 }}>
-      {rows ? (
-        <textarea className={`vb-form-input${err[k] ? " err" : ""}`} placeholder={ph} rows={rows}
-          value={(form as any)[k]} onChange={(e) => set(k, e.target.value)} style={{ resize: "vertical" }} />
-      ) : (
-        <input type={type} className={`vb-form-input${err[k] ? " err" : ""}`} placeholder={ph}
-          value={(form as any)[k]} onChange={(e) => set(k, e.target.value)} />
-      )}
-      {err[k] && <div style={{ color: "oklch(0.55 0.10 22)", fontSize: 12, marginTop: 4 }}>{err[k]}</div>}
-    </div>
-  );
+  const errStyle = { color: "oklch(0.55 0.10 22)", fontSize: 12, marginTop: 4 };
+  const fieldWrap = { marginBottom: 14 } as React.CSSProperties;
+  const row2 = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 } as React.CSSProperties;
 
   return (
     <Modal onClose={onClose} title="Adaugă Furnizor" size="md">
       <form onSubmit={submit}>
-        <div style={{ marginBottom: 14 }}>
+        {/* Nickname */}
+        <div style={fieldWrap}>
           <input className="vb-form-input" placeholder="Porecla / numele tău (opțional)"
             value={nickname} onChange={(e) => setNicknameState(e.target.value)} />
         </div>
-        <div style={{ marginBottom: 14 }}>
+
+        {/* Category */}
+        <div style={fieldWrap}>
           <select className={`vb-form-input${err.categoryId ? " err" : ""}`}
-            value={form.categoryId} onChange={(e) => set("categoryId", e.target.value)}>
+            value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
             <option value="">Alege categoria *</option>
             {categories.map((c) => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
           </select>
-          {err.categoryId && <div style={{ color: "oklch(0.55 0.10 22)", fontSize: 12, marginTop: 4 }}>{err.categoryId}</div>}
+          {err.categoryId && <div style={errStyle}>{err.categoryId}</div>}
         </div>
-        <Field k="name" ph="Numele furnizorului *" />
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          <Field k="phone" ph="Telefon *" />
-          <Field k="whatsapp" ph="WhatsApp (ex: 40721...)" />
+
+        {/* Name */}
+        <div style={fieldWrap}>
+          <input className={`vb-form-input${err.name ? " err" : ""}`} placeholder="Numele furnizorului *"
+            value={name} onChange={(e) => setName(e.target.value)} />
+          {err.name && <div style={errStyle}>{err.name}</div>}
         </div>
-        <Field k="description" ph="Descriere servicii *" rows={3} />
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          <Field k="priceRange" ph="Interval preț (ex: 100–300 RON)" />
-          <Field k="hours" ph="Program (ex: L–V 8:00–18:00)" />
+
+        {/* Phone + WhatsApp */}
+        <div style={row2}>
+          <div>
+            <input className={`vb-form-input${err.phone ? " err" : ""}`} placeholder="Telefon *"
+              value={phone} onChange={(e) => setPhone(e.target.value)} />
+            {err.phone && <div style={errStyle}>{err.phone}</div>}
+          </div>
+          <input className="vb-form-input" placeholder="WhatsApp (ex: 40721...)"
+            value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} />
         </div>
-        <Field k="zone" ph="Zonă deservită (ex: Băneasa, Pipera)" />
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          <Field k="website" ph="Website (opțional)" />
-          <Field k="social" ph="Instagram / social (opțional)" />
+
+        {/* Description */}
+        <div style={fieldWrap}>
+          <textarea className={`vb-form-input${err.description ? " err" : ""}`}
+            placeholder="Descriere servicii *" rows={3}
+            value={description} onChange={(e) => setDescription(e.target.value)}
+            style={{ resize: "vertical" }} />
+          {err.description && <div style={errStyle}>{err.description}</div>}
         </div>
+
+        {/* Price + Hours */}
+        <div style={row2}>
+          <input className="vb-form-input" placeholder="Interval preț (ex: 100–300 RON)"
+            value={priceRange} onChange={(e) => setPriceRange(e.target.value)} />
+          <input className="vb-form-input" placeholder="Program (ex: L–V 8:00–18:00)"
+            value={hours} onChange={(e) => setHours(e.target.value)} />
+        </div>
+
+        {/* Zone / Address with geocode */}
+        <div style={fieldWrap}>
+          <div style={{ display: "flex", gap: 8 }}>
+            <input className="vb-form-input" style={{ flex: 1 }}
+              placeholder="Zonă (ex: Băneasa, Pipera) sau adresă exactă"
+              value={zoneOrAddress}
+              onChange={(e) => { setZoneOrAddress(e.target.value); setLat(null); setLng(null); setGeocodeMsg(""); }} />
+            <button type="button" onClick={geocode} disabled={!zoneOrAddress || geocoding}
+              title="Geocodează adresa exactă"
+              style={{ padding: "11px 14px", borderRadius: 10, border: "1.5px solid var(--border)", background: "var(--card)", cursor: "pointer", flexShrink: 0, fontSize: 16 }}>
+              {geocoding ? "…" : "📍"}
+            </button>
+          </div>
+          {geocodeMsg && (
+            <div style={{ fontSize: 12, marginTop: 4, color: lat ? "oklch(0.45 0.10 148)" : "var(--vb-text-l)" }}>
+              {geocodeMsg}
+            </div>
+          )}
+          <div style={{ fontSize: 11, color: "var(--vb-text-l)", marginTop: 4 }}>
+            Scrie o zonă pentru localizare aproximativă, sau o adresă completă și apasă 📍 pentru localizare exactă pe hartă.
+          </div>
+        </div>
+
+        {/* Website + Social */}
+        <div style={row2}>
+          <input className="vb-form-input" placeholder="Website (opțional)"
+            value={website} onChange={(e) => setWebsite(e.target.value)} />
+          <input className="vb-form-input" placeholder="Instagram / social (opțional)"
+            value={social} onChange={(e) => setSocial(e.target.value)} />
+        </div>
+
         <button type="submit" className="vb-btn-primary" disabled={submitting}
           style={{ width: "100%", padding: 14, fontSize: 15 }}>
           {submitting ? "Se adaugă..." : "Adaugă Furnizorul"}
@@ -542,7 +626,7 @@ export default function HomePage() {
       </header>
 
       {/* ── Categories ── */}
-      <div className="vb-cat-scroll">
+      <div className="vb-cat-scroll-wrap"><div className="vb-cat-scroll">
         <button className={`vb-cat-chip${activeCat === "all" ? " active" : ""}`} onClick={() => setActiveCat("all")}>
           🏘️ Toți
         </button>
@@ -557,7 +641,7 @@ export default function HomePage() {
             )}
           </button>
         ))}
-      </div>
+      </div></div>
 
       {/* ── Sort bar ── */}
       <div className="vb-sort-bar">
