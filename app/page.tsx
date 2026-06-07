@@ -10,6 +10,20 @@ const ProviderMap = dynamic(
   { ssr: false }
 );
 
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function normalizeUrl(val: string): string {
+  const v = val.trim();
+  if (!v) return "";
+  return /^https?:\/\//i.test(v) ? v : `https://${v}`;
+}
+
+function normalizeSocial(val: string): string {
+  const v = val.trim().replace(/^@/, "");
+  if (!v) return "";
+  return /^https?:\/\//i.test(v) ? v : `https://www.instagram.com/${v}`;
+}
+
 // ── Types ────────────────────────────────────────────────────────────────────
 
 interface Category { id: number; name: string; slug: string; icon: string }
@@ -146,7 +160,7 @@ function DetailModal({ provider, onClose, onReview, onReport }: {
         {provider.priceRange && <div className="vb-info-cell"><div className="vb-info-label">Prețuri</div><div className="vb-info-val">💰 {provider.priceRange}</div></div>}
         {provider.hours     && <div className="vb-info-cell"><div className="vb-info-label">Program</div><div className="vb-info-val">🕐 {provider.hours}</div></div>}
         {provider.zone      && <div className="vb-info-cell"><div className="vb-info-label">Zonă</div><div className="vb-info-val">📍 {provider.zone}</div></div>}
-        {provider.website   && <div className="vb-info-cell"><div className="vb-info-label">Website</div><div className="vb-info-val">🌐 {provider.website}</div></div>}
+        {provider.website   && <div className="vb-info-cell"><div className="vb-info-label">Website</div><div className="vb-info-val"><a href={provider.website} target="_blank" rel="noopener noreferrer" style={{ color: "var(--vb-accent)", textDecoration: "none", wordBreak: "break-all" }} onClick={(e) => e.stopPropagation()}>🌐 {provider.website.replace(/^https?:\/\//,"")}</a></div></div>}
         {provider.address   && <div className="vb-info-cell"><div className="vb-info-label">Adresă</div><div className="vb-info-val">🏠 {provider.address}</div></div>}
         {provider.email     && <div className="vb-info-cell"><div className="vb-info-label">Email</div><div className="vb-info-val">✉️ {provider.email}</div></div>}
       </div>
@@ -167,9 +181,13 @@ function DetailModal({ provider, onClose, onReview, onReport }: {
           </a>
         )}
         {provider.social && (
-          <span style={{ flex: 1, justifyContent: "center", display: "inline-flex", alignItems: "center", gap: 5, padding: "7px 14px", borderRadius: 9, fontSize: 13, fontWeight: 700, background: "oklch(0.91 0.028 280)", color: "oklch(0.42 0.082 280)" }}>
-            📷 {provider.social}
-          </span>
+          <a href={provider.social} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
+            style={{ flex: 1, justifyContent: "center", display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 14px", borderRadius: 9, fontSize: 13, fontWeight: 700, background: "oklch(0.91 0.028 280)", color: "oklch(0.42 0.082 280)", textDecoration: "none" }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1112.63 8 4 4 0 0116 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>
+            </svg>
+            {provider.social.replace(/^https?:\/\/(www\.)?instagram\.com\//,"").replace(/[/?#].*$/,"")}
+          </a>
         )}
       </div>
 
@@ -287,7 +305,9 @@ function AddProviderModal({ categories, onClose, onAdded }: {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         name, phone, whatsapp, description, priceRange, hours,
-        zone: zoneOrAddress, lat, lng, website, social,
+        zone: zoneOrAddress, lat, lng,
+        website: normalizeUrl(website),
+        social: normalizeSocial(social),
         categoryId: parseInt(categoryId),
         addedByNickname: nickname || "Vecin anonim",
         userUuid: getUserUuid(),
