@@ -16,6 +16,7 @@ interface Provider {
   description?: string | null; services?: string | null; categoryId: number;
   categoryName?: string | null; categoryIcon?: string | null;
   address?: string | null; lat?: number | null; lng?: number | null;
+  website?: string | null; social?: string | null;
   addedByNickname?: string | null; avgRating?: number | null; reviewCount?: number | null;
 }
 
@@ -40,6 +41,8 @@ export default function AdminPage() {
   const [editForm, setEditForm] = useState<Partial<Provider>>({});
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [geocoding, setGeocoding] = useState(false);
+  const [geocodeMsg, setGeocodeMsg] = useState("");
 
   function storedPassword() {
     return typeof window !== "undefined" ? sessionStorage.getItem(SESSION_KEY) ?? "" : "";
@@ -84,11 +87,33 @@ export default function AdminPage() {
 
   function startEdit(p: Provider) {
     setEditingId(p.id);
+    setGeocodeMsg("");
     setEditForm({
       name: p.name, phone: p.phone ?? "", email: p.email ?? "",
       description: p.description ?? "", services: p.services ?? "",
       categoryId: p.categoryId, address: p.address ?? "",
+      website: p.website ?? "", social: p.social ?? "",
+      lat: p.lat ?? null, lng: p.lng ?? null,
     });
+  }
+
+  async function geocodeAddress() {
+    const addr = editForm.address ?? "";
+    if (!addr) return;
+    setGeocoding(true); setGeocodeMsg("");
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(addr)}&format=json&limit=1`);
+      const data = await res.json();
+      if (data.length > 0) {
+        setEditForm((f) => ({ ...f, lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) }));
+        setGeocodeMsg(`✓ ${parseFloat(data[0].lat).toFixed(5)}, ${parseFloat(data[0].lon).toFixed(5)}`);
+      } else {
+        setGeocodeMsg("Adresa nu a fost găsită.");
+      }
+    } catch {
+      setGeocodeMsg("Eroare la geocodare.");
+    }
+    setGeocoding(false);
   }
 
   async function saveEdit(id: number) {
@@ -240,8 +265,31 @@ export default function AdminPage() {
                       <Textarea className="mt-1" rows={2} value={editForm.services ?? ""} onChange={(e) => setEditForm((f) => ({ ...f, services: e.target.value }))} />
                     </div>
                     <div>
-                      <label className="text-xs font-medium">Adresă</label>
-                      <Input className="mt-1" value={editForm.address ?? ""} onChange={(e) => setEditForm((f) => ({ ...f, address: e.target.value }))} />
+                      <label className="text-xs font-medium">Website</label>
+                      <Input className="mt-1" value={editForm.website ?? ""} placeholder="https://..." onChange={(e) => setEditForm((f) => ({ ...f, website: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium">Instagram</label>
+                      <Input className="mt-1" value={editForm.social ?? ""} placeholder="@username sau URL complet" onChange={(e) => setEditForm((f) => ({ ...f, social: e.target.value }))} />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="text-xs font-medium">Adresă + Pin hartă</label>
+                      <div className="flex gap-2 mt-1">
+                        <Input
+                          value={editForm.address ?? ""}
+                          placeholder="Str. Exemplu nr. 1, București"
+                          onChange={(e) => { setEditForm((f) => ({ ...f, address: e.target.value })); setGeocodeMsg(""); }}
+                        />
+                        <Button type="button" size="sm" variant="outline" onClick={geocodeAddress} disabled={geocoding || !editForm.address} title="Găsește coordonatele">
+                          {geocoding ? <Loader2 size={13} className="animate-spin" /> : <MapPin size={13} />}
+                        </Button>
+                      </div>
+                      {geocodeMsg && (
+                        <p className={`text-xs mt-1 ${editForm.lat ? "text-green-600" : "text-muted-foreground"}`}>{geocodeMsg}</p>
+                      )}
+                      {editForm.lat && editForm.lng && (
+                        <p className="text-xs text-muted-foreground mt-1">📍 {editForm.lat.toFixed(5)}, {editForm.lng.toFixed(5)}</p>
+                      )}
                     </div>
                     <div className="flex gap-2">
                       <Button size="sm" onClick={() => saveEdit(p.id)} disabled={saving}>
