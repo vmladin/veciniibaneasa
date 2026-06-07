@@ -736,11 +736,21 @@ export default function HomePage() {
   async function shareProvider(provider: Provider) {
     const url = `${window.location.origin}/?p=${provider.id}`;
     if (navigator.share) {
-      await navigator.share({ title: provider.name, text: `${provider.categoryIcon ?? ""} ${provider.name} — recomandat pe Vecinii Băneasa`, url });
-    } else {
-      await navigator.clipboard.writeText(url);
-      flash("Link copiat! 🔗");
+      try { await navigator.share({ title: provider.name, text: `${provider.categoryIcon ?? ""} ${provider.name} — recomandat pe Vecinii Băneasa`, url }); } catch { /* cancelled */ }
+      return;
     }
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      const el = document.createElement("textarea");
+      el.value = url;
+      el.style.cssText = "position:fixed;opacity:0;top:0;left:0";
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand("copy");
+      document.body.removeChild(el);
+    }
+    flash("Link copiat! 🔗");
   }
 
   function handleReview(id: number) {
