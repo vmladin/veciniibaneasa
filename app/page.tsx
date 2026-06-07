@@ -736,8 +736,13 @@ export default function HomePage() {
   async function shareProvider(provider: Provider) {
     const url = `${window.location.origin}/?p=${provider.id}`;
     if (navigator.share) {
-      try { await navigator.share({ title: provider.name, text: `${provider.categoryIcon ?? ""} ${provider.name} — recomandat pe Vecinii Băneasa`, url }); } catch { /* cancelled */ }
-      return;
+      try {
+        await navigator.share({ title: provider.name, text: `${provider.categoryIcon ?? ""} ${provider.name} — recomandat pe Vecinii Băneasa`, url });
+        return;
+      } catch (err: unknown) {
+        if (err instanceof Error && err.name === "AbortError") return;
+        // share failed (desktop Chrome) — fall through to clipboard
+      }
     }
     try {
       await navigator.clipboard.writeText(url);
