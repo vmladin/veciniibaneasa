@@ -755,7 +755,7 @@ export default function HomePage() {
           </span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 13, color: "var(--vb-text-l)" }}>Sortează:</span>
+          <span className="vb-sort-label">Sortează:</span>
           <select className="vb-sort-select" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
             <option value="rating">Rating</option>
             <option value="reviews">Nr. recenzii</option>
@@ -813,25 +813,25 @@ export default function HomePage() {
         style={{
           position: "fixed",
           bottom: 20,
-          right: 20,
+          right: 16,
           display: "flex",
           alignItems: "center",
           gap: 7,
-          padding: "8px 14px",
+          padding: "9px 15px",
           borderRadius: 999,
-          background: "var(--card)",
-          border: "1px solid var(--border)",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.10)",
+          background: "oklch(0.36 0.018 42)",
+          border: "none",
+          boxShadow: "0 3px 12px rgba(0,0,0,0.22)",
           fontSize: 13,
-          fontWeight: 500,
-          color: "var(--vb-text-m)",
+          fontWeight: 700,
+          color: "#fff",
           textDecoration: "none",
-          opacity: 0.75,
+          opacity: 0.82,
           transition: "opacity 0.15s",
           zIndex: 50,
         }}
         onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
-        onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.75")}
+        onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.82")}
       >
         <span style={{ fontSize: 16 }}>☕</span> Susține proiectul
       </a>

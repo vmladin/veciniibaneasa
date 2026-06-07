@@ -87,8 +87,8 @@
 
 @layer base {
   * { @apply border-border outline-ring/50; }
-  body { @apply bg-background text-foreground; font-family: var(--font-nunito), 'Nunito', sans-serif; }
-  html { font-family: var(--font-nunito), 'Nunito', sans-serif; }
+  html { font-family: var(--font-nunito), 'Nunito', sans-serif; overflow-x: hidden; }
+  body { @apply bg-background text-foreground; font-family: var(--font-nunito), 'Nunito', sans-serif; overflow-x: hidden; }
 }
 
 /* ── VB Design System ── */
@@ -155,7 +155,9 @@
 .vb-cat-chip:hover { border-color: var(--vb-accent); color: var(--vb-accent); background: var(--vb-accent-lt); }
 .vb-cat-chip.active { background: var(--vb-accent); color: #fff; border-color: var(--vb-accent); }
 
-.vb-sort-bar { display: flex; align-items: center; justify-content: space-between; padding: 12px 24px; }
+.vb-sort-bar { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; gap: 8px; flex-wrap: wrap; }
+.vb-sort-label { font-size: 13px; color: var(--vb-text-l); }
+@media (max-width: 400px) { .vb-sort-label { display: none; } }
 .vb-sort-count { font-size: 13px; color: var(--vb-text-m); font-weight: 600; }
 .vb-sort-select {
   padding: 5px 10px; border: 1.5px solid var(--border); border-radius: 8px;

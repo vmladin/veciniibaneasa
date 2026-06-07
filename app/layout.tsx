@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Nunito } from "next/font/google";
 import "./globals.css";
 
@@ -11,6 +11,11 @@ const nunito = Nunito({
 export const metadata: Metadata = {
   title: "Vecinii Băneasa — Servicii locale",
   description: "Directorul de servicii locale recomandate de vecinii din Băneasa",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
