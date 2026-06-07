@@ -23,6 +23,19 @@ const seedCategories = [
   { name: "Service auto", slug: "car-repair", icon: "🚗" },
   { name: "Lăcătuș / Yalelist", slug: "locksmith", icon: "🔑" },
   { name: "Dezinsecție & Deratizare", slug: "pest-control", icon: "🐛" },
+  // New categories
+  { name: "Notar & Juridic", slug: "notary-legal", icon: "⚖️" },
+  { name: "Grădinițe", slug: "gradinita", icon: "🎨" },
+  { name: "Școli & Meditații", slug: "schools-tutoring", icon: "📚" },
+  { name: "Restaurante & Cafenele", slug: "restaurants", icon: "🍽️" },
+  { name: "Săli de Evenimente", slug: "event-halls", icon: "🎉" },
+  { name: "Masaj & Wellness", slug: "wellness", icon: "💆" },
+  { name: "Frumusețe & Coafură", slug: "beauty", icon: "💅" },
+  { name: "Sport & Fitness", slug: "sport-fitness", icon: "🏋️" },
+  { name: "Construcții & Renovări", slug: "construction", icon: "🏗️" },
+  { name: "Animale de Companie", slug: "pets", icon: "🐾" },
+  { name: "Transport & Mutări", slug: "transport", icon: "🚐" },
+  { name: "IT & Electronice", slug: "it-electronics", icon: "💻" },
   { name: "Altele", slug: "other", icon: "📋" },
 ];
 
