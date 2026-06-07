@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
 import { Avatar } from "@/components/avatar";
 import { getUserUuid, getNickname, setNickname } from "@/lib/user-identity";
@@ -69,6 +69,9 @@ function StarPicker({ value, onChange }: { value: number; onChange: (v: number) 
 function Modal({ children, onClose, title, size = "md" }: {
   children: React.ReactNode; onClose: () => void; title: string | null; size?: "sm" | "md" | "lg";
 }) {
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const mouseDownOnOverlay = useRef(false);
+
   useEffect(() => {
     const h = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", h);
@@ -76,8 +79,13 @@ function Modal({ children, onClose, title, size = "md" }: {
   }, [onClose]);
 
   return (
-    <div className="vb-overlay" onClick={onClose}>
-      <div className={`vb-modal vb-modal-${size}`} onClick={(e) => e.stopPropagation()}>
+    <div
+      className="vb-overlay"
+      ref={overlayRef}
+      onMouseDown={(e) => { mouseDownOnOverlay.current = e.target === overlayRef.current; }}
+      onMouseUp={(e) => { if (mouseDownOnOverlay.current && e.target === overlayRef.current) onClose(); }}
+    >
+      <div className={`vb-modal vb-modal-${size}`}>
         {title !== null ? (
           <div className="vb-modal-hd">
             <h2>{title}</h2>
