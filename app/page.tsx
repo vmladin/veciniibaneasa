@@ -795,13 +795,13 @@ export default function HomePage() {
       {/* ── Header ── */}
       <header className="vb-header">
         <div className="vb-header-inner">
-          <div className="vb-logo">
+          <button className="vb-logo" onClick={() => { setSearch(""); setSelectedCats([]); setSortBy("newest"); }} style={{ background: "none", border: "none", cursor: "pointer", textAlign: "left" }}>
             <div className="vb-logo-mark"><HouseLogo /></div>
             <div>
               <div className="vb-logo-title">Vecinii Băneasa</div>
               <div className="vb-logo-sub">Furnizorii cartierului nostru</div>
             </div>
-          </div>
+          </button>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, justifyContent: "flex-end" }}>
             <div className="vb-search-wrap">
               <span className="vb-search-icon">🔍</span>
