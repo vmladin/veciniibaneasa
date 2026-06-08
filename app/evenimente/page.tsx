@@ -252,10 +252,11 @@ function PartButton({ event, onDelta, style: styleProp }: {
 
 // ── Event Card (masonry) ──────────────────────────────────────────────────────
 
-function EventCard({ event, onOpen, onDelta }: {
+function EventCard({ event, onOpen, onDelta, onShare }: {
   event: Event;
   onOpen: () => void;
   onDelta: (id: number, delta: number) => void;
+  onShare: () => void;
 }) {
   const past = isPast(event.date);
   const gradient = getGradient(event.id);
@@ -321,9 +322,23 @@ function EventCard({ event, onOpen, onDelta }: {
               </div>
             )}
           </div>
-          {!past && (
-            <PartButton event={{ ...event, attendees: count }} onDelta={delta => { setCount(c => Math.max(0, c + delta)); onDelta(event.id, delta); }} />
-          )}
+          <div style={{ display: "flex", gap: 7, alignItems: "center" }} onClick={e => e.stopPropagation()}>
+            <button
+              onClick={e => { e.stopPropagation(); onShare(); }}
+              title="Distribuie"
+              style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 34, height: 34, borderRadius: 8, border: "1.5px solid var(--border)", background: "var(--card)", cursor: "pointer", color: "var(--vb-text-m)", flexShrink: 0, transition: "border-color 0.15s, color 0.15s" }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--vb-accent)"; e.currentTarget.style.color = "var(--vb-accent)"; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "var(--vb-text-m)"; }}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+              </svg>
+            </button>
+            {!past && (
+              <PartButton event={{ ...event, attendees: count }} onDelta={delta => { setCount(c => Math.max(0, c + delta)); onDelta(event.id, delta); }} />
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -332,11 +347,10 @@ function EventCard({ event, onOpen, onDelta }: {
 
 // ── Detail Modal ──────────────────────────────────────────────────────────────
 
-function DetailModal({ event, onClose, onDelta, onShare }: {
+function DetailModal({ event, onClose, onDelta }: {
   event: Event;
   onClose: () => void;
   onDelta: (id: number, delta: number) => void;
-  onShare: () => void;
 }) {
   const overlayRef = useRef<HTMLDivElement>(null);
   const mdRef = useRef(false);
@@ -419,19 +433,13 @@ function DetailModal({ event, onClose, onDelta, onShare }: {
                 </div>
               )}
             </div>
-            <div style={{ display: "flex", gap: 9 }}>
-              <button
-                onClick={onShare}
-                style={{ background: "var(--background)", border: "1.5px solid var(--border)", borderRadius: 10, padding: "9px 14px", fontSize: 13, cursor: "pointer", fontFamily: "inherit", color: "var(--vb-text-m)", fontWeight: 700, transition: "all 0.14s" }}
-              >↗ Share</button>
-              {!past && (
-                <PartButton
-                  event={{ ...event, attendees: count }}
-                  onDelta={delta => { setCount(c => Math.max(0, c + delta)); onDelta(event.id, delta); }}
-                  style={{ padding: "9px 20px", fontSize: 14, borderRadius: 11 }}
-                />
-              )}
-            </div>
+            {!past && (
+              <PartButton
+                event={{ ...event, attendees: count }}
+                onDelta={delta => { setCount(c => Math.max(0, c + delta)); onDelta(event.id, delta); }}
+                style={{ padding: "9px 20px", fontSize: 14, borderRadius: 11 }}
+              />
+            )}
           </div>
         </div>
       </div>
@@ -615,8 +623,16 @@ export default function EvenimentePage() {
   async function loadEvents() {
     setLoading(true);
     const data = await fetch("/api/events?all=1").then(r => r.json());
-    setAllEvents(Array.isArray(data) ? data : []);
+    const rows: Event[] = Array.isArray(data) ? data : [];
+    setAllEvents(rows);
     setLoading(false);
+    // Deep-link: ?e=id auto-opens that event
+    const sp = new URLSearchParams(window.location.search);
+    const evId = sp.get("e");
+    if (evId) {
+      const target = rows.find(r => r.id === Number(evId));
+      if (target) { setDetail(target); history.replaceState(null, "", "/evenimente"); }
+    }
   }
 
   useEffect(() => { loadEvents(); }, []);
@@ -644,12 +660,22 @@ export default function EvenimentePage() {
   }
 
   function shareEvent(ev: Event) {
-    const url = `${window.location.origin}/evenimente`;
-    if (/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) && navigator.share) {
-      navigator.share({ title: ev.title, text: `📅 ${ev.title}`, url }).catch(() => {});
+    const url = `${window.location.origin}/evenimente?e=${ev.id}`;
+    const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+    if (isMobile && navigator.share) {
+      navigator.share({ title: ev.title, text: `📅 ${ev.title}`, url }).catch((err: unknown) => {
+        if (err instanceof Error && err.name === "AbortError") return;
+      });
       return;
     }
-    navigator.clipboard?.writeText(url).then(() => flash("Link copiat! 🔗")).catch(() => flash("Link copiat! 🔗"));
+    navigator.clipboard?.writeText(url)
+      .then(() => flash("Link copiat! 🔗"))
+      .catch(() => {
+        const el = document.createElement("textarea"); el.value = url;
+        el.style.cssText = "position:fixed;opacity:0;top:0;left:0";
+        document.body.appendChild(el); el.select(); document.execCommand("copy"); document.body.removeChild(el);
+        flash("Link copiat! 🔗");
+      });
   }
 
   const [y, m, d] = (selectedDate ?? "").split("-");
@@ -762,6 +788,7 @@ export default function EvenimentePage() {
                       event={ev}
                       onOpen={() => setDetail(ev)}
                       onDelta={handleDelta}
+                      onShare={() => shareEvent(ev)}
                     />
                   ))}
                 </div>
@@ -776,7 +803,6 @@ export default function EvenimentePage() {
           event={detail}
           onClose={() => setDetail(null)}
           onDelta={handleDelta}
-          onShare={() => shareEvent(detail)}
         />
       )}
       {showAdd && (
