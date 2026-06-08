@@ -535,7 +535,7 @@ export default function EvenimentePage() {
         </div>
       </header>
 
-      <div className="vb-events-layout" style={{ maxWidth: 960, margin: "0 auto", padding: "28px 16px 60px" }}>
+      <div className="vb-events-layout" style={{ maxWidth: 1400, margin: "0 auto", padding: "28px 24px 60px" }}>
 
         {/* Left: Calendar */}
         <div style={{ position: "sticky", top: 80 }}>

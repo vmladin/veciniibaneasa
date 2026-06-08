@@ -170,7 +170,7 @@
 .vb-events-layout { display: grid; grid-template-columns: minmax(0, 320px) 1fr; gap: 28px; align-items: start; }
 @media (max-width: 680px) { .vb-events-layout { grid-template-columns: 1fr; } }
 
-.vb-events-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+.vb-events-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; }
 @media (max-width: 500px) { .vb-events-grid { grid-template-columns: 1fr; } }
 
 .vb-card {
