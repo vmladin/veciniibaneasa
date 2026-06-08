@@ -142,7 +142,7 @@ function Calendar({ selected, onSelect, eventDates }: {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
         <button onClick={prev} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--vb-text-m)", fontSize: 16, padding: "3px 7px", borderRadius: 6 }}>‹</button>
         <span style={{ fontFamily: "var(--font-serif, 'DM Serif Display', Georgia, serif)", fontSize: 16, color: "var(--vb-text)", fontWeight: 400 }}>
-          {MONTHS_RO[viewMonth].slice(0, 4)} {viewYear}
+          {MONTHS_RO[viewMonth]} {viewYear}
         </span>
         <button onClick={next} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--vb-text-m)", fontSize: 16, padding: "3px 7px", borderRadius: 6 }}>›</button>
       </div>
