@@ -94,6 +94,7 @@ export const announcements = pgTable("announcements", {
   price: varchar("price", { length: 100 }),
   images: text("images"), // JSON array of Cloudinary URLs
   contact: varchar("contact", { length: 200 }),
+  whatsapp: varchar("whatsapp", { length: 50 }),
   zone: varchar("zone", { length: 100 }),
   nickname: varchar("nickname", { length: 100 }),
   resolved: boolean("resolved").default(false).notNull(),

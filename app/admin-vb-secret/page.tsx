@@ -45,7 +45,7 @@ interface Event {
 interface Announcement {
   id: number; type: string; category: string; title: string;
   description?: string | null; price?: string | null; images?: string | null;
-  contact?: string | null; zone?: string | null; nickname?: string | null;
+  contact?: string | null; whatsapp?: string | null; zone?: string | null; nickname?: string | null;
   resolved: boolean; expiresAt: string; createdAt: string;
 }
 
@@ -314,7 +314,7 @@ export default function AdminPage() {
     setAnnForm({
       type: a.type, category: a.category, title: a.title,
       description: a.description ?? "", price: a.price ?? "",
-      contact: a.contact ?? "", zone: a.zone ?? "",
+      contact: a.contact ?? "", whatsapp: a.whatsapp ?? "", zone: a.zone ?? "",
       nickname: a.nickname ?? "", resolved: a.resolved,
     });
   }
@@ -701,6 +701,10 @@ export default function AdminPage() {
                         <div>
                           <label className="text-xs font-medium">Contact</label>
                           <Input className="mt-1" value={annForm.contact ?? ""} onChange={e => setAnnForm(f => ({ ...f, contact: e.target.value }))} />
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium">WhatsApp</label>
+                          <Input className="mt-1" placeholder="ex: 40721000000" value={annForm.whatsapp ?? ""} onChange={e => setAnnForm(f => ({ ...f, whatsapp: e.target.value }))} />
                         </div>
                         <div>
                           <label className="text-xs font-medium">Zonă</label>

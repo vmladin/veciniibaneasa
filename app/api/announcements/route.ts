@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const { type, category, title, description, price, images, contact, zone, nickname } =
+  const { type, category, title, description, price, images, contact, whatsapp, zone, nickname } =
     await req.json();
 
   if (!title?.trim() || !contact?.trim() || !type || !category) {
@@ -52,6 +52,7 @@ export async function POST(req: NextRequest) {
       price: price?.trim() || null,
       images: images ?? null,
       contact: contact.trim(),
+      whatsapp: whatsapp?.trim() || null,
       zone: zone ?? null,
       nickname: nickname?.trim() || "Vecin anonim",
       resolved: false,
@@ -79,7 +80,7 @@ export async function PATCH(req: NextRequest) {
   if (pw !== process.env.ADMIN_PASSWORD)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { id, type, category, title, description, price, images, contact, zone, nickname, resolved } =
+  const { id, type, category, title, description, price, images, contact, whatsapp, zone, nickname, resolved } =
     body;
   if (!id) return NextResponse.json({ error: "ID lipsă" }, { status: 400 });
 
@@ -93,6 +94,7 @@ export async function PATCH(req: NextRequest) {
       price: price?.trim() || null,
       images: images ?? null,
       contact: contact?.trim() || null,
+      whatsapp: whatsapp?.trim() || null,
       zone: zone ?? null,
       nickname: nickname?.trim() || null,
       resolved: resolved ?? false,

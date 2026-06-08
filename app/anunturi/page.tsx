@@ -36,6 +36,7 @@ interface Announcement {
   price?: string | null;
   images?: string | null;
   contact?: string | null;
+  whatsapp?: string | null;
   zone?: string | null;
   nickname?: string | null;
   resolved: boolean;
@@ -364,6 +365,17 @@ function AnnDetailModal({ ann, onClose, onResolved }: {
                 📞 {ann.contact}
               </a>
             )}
+            {ann.whatsapp && (
+              <a
+                href={`https://wa.me/${ann.whatsapp.replace(/\D/g, "")}`}
+                className="vb-btn-wa"
+                target="_blank"
+                rel="noopener"
+                style={{ textAlign: "center", textDecoration: "none", padding: "13px 0", fontSize: 15 }}
+              >
+                💬 WhatsApp
+              </a>
+            )}
             <button
               onClick={handleResolve}
               style={{ padding: "10px 0", borderRadius: 10, border: "1.5px solid var(--border)", background: "none", color: "var(--vb-text-m)", fontSize: 13.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", transition: "all 0.15s" }}
@@ -467,10 +479,22 @@ function AnnouncementCard({ ann, onOpen, onResolved, onShare }: { ann: Announcem
             <a
               href={`tel:${ann.contact.replace(/\s/g, "")}`}
               className="vb-btn-phone"
-              style={{ flex: 1, justifyContent: "center", textDecoration: "none" }}
+              style={{ flex: ann.whatsapp ? "unset" : 1, justifyContent: "center", textDecoration: "none" }}
               onClick={e => e.stopPropagation()}
             >
               📞 {ann.contact}
+            </a>
+          )}
+          {ann.whatsapp && (
+            <a
+              href={`https://wa.me/${ann.whatsapp.replace(/\D/g, "")}`}
+              className="vb-btn-wa"
+              target="_blank"
+              rel="noopener"
+              style={{ flex: 1, justifyContent: "center", textDecoration: "none" }}
+              onClick={e => e.stopPropagation()}
+            >
+              💬 WhatsApp
             </a>
           )}
           <button
@@ -515,6 +539,7 @@ function AddModal({ onClose, onAdded }: { onClose: () => void; onAdded: () => vo
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
   const [contact, setContact] = useState("");
+  const [whatsappVal, setWhatsappVal] = useState("");
   const [zone, setZone] = useState("");
   const [nicknameVal, setNicknameVal] = useState(getNickname());
   const [files, setFiles] = useState<File[]>([]);
@@ -555,6 +580,7 @@ function AddModal({ onClose, onAdded }: { onClose: () => void; onAdded: () => vo
         price: price.trim() || null,
         images: imageUrls.length > 0 ? JSON.stringify(imageUrls) : null,
         contact: contact.trim(),
+        whatsapp: whatsappVal.trim() || null,
         zone: zone || null,
         nickname: nicknameVal || "Vecin anonim",
       }),
@@ -706,6 +732,20 @@ function AddModal({ onClose, onAdded }: { onClose: () => void; onAdded: () => vo
                   onChange={e => setNicknameVal(e.target.value)}
                 />
               </div>
+            </div>
+
+            {/* WhatsApp */}
+            <div>
+              {lbl("WhatsApp (opțional)")}
+              <input
+                className="vb-form-input"
+                placeholder="ex: 40721000000 (cu prefix de țară)"
+                value={whatsappVal}
+                onChange={e => setWhatsappVal(e.target.value)}
+              />
+              <p style={{ fontSize: 11, color: "var(--vb-text-l)", marginTop: 4 }}>
+                Lasă gol pentru a folosi același număr ca telefonul de contact.
+              </p>
             </div>
 
             {/* Info box */}
