@@ -147,6 +147,8 @@ export default function AdminPage() {
   const [annForm, setAnnForm] = useState<Partial<Announcement>>({});
   const [savingAnn, setSavingAnn] = useState(false);
   const [deletingAnnId, setDeletingAnnId] = useState<number | null>(null);
+  const [annImageFiles, setAnnImageFiles] = useState<File[]>([]);
+  const [annUploadStep, setAnnUploadStep] = useState("");
 
   // Reports state
   const [reports, setReports] = useState<Report[]>([]);
@@ -311,9 +313,12 @@ export default function AdminPage() {
 
   function startEditAnn(a: Announcement) {
     setEditingAnnId(a.id);
+    setAnnImageFiles([]);
+    setAnnUploadStep("");
     setAnnForm({
       type: a.type, category: a.category, title: a.title,
       description: a.description ?? "", price: a.price ?? "",
+      images: a.images ?? null,
       contact: a.contact ?? "", whatsapp: a.whatsapp ?? "", zone: a.zone ?? "",
       nickname: a.nickname ?? "", resolved: a.resolved,
     });
@@ -321,12 +326,24 @@ export default function AdminPage() {
 
   async function saveAnn(id: number) {
     setSavingAnn(true);
+    // Upload any new image files
+    let existingUrls: string[] = [];
+    try { existingUrls = annForm.images ? JSON.parse(annForm.images) : []; } catch { existingUrls = []; }
+    const newUrls: string[] = [];
+    for (let i = 0; i < annImageFiles.length; i++) {
+      setAnnUploadStep(`Se încarcă foto ${i + 1} din ${annImageFiles.length}...`);
+      try { newUrls.push(await uploadToCloudinary(annImageFiles[i])); } catch { /* skip */ }
+    }
+    setAnnUploadStep("");
+    const allUrls = [...existingUrls, ...newUrls];
+    const images = allUrls.length > 0 ? JSON.stringify(allUrls) : null;
     await fetch("/api/announcements", {
       method: "PATCH",
       headers: { "Content-Type": "application/json", "x-admin-password": storedPassword() },
-      body: JSON.stringify({ id, ...annForm }),
+      body: JSON.stringify({ id, ...annForm, images }),
     });
     setEditingAnnId(null);
+    setAnnImageFiles([]);
     setSavingAnn(false);
     await loadAnnouncements();
   }
@@ -715,6 +732,63 @@ export default function AdminPage() {
                           <Input className="mt-1" value={annForm.nickname ?? ""} onChange={e => setAnnForm(f => ({ ...f, nickname: e.target.value }))} />
                         </div>
                       </div>
+                      {/* Images */}
+                      <div>
+                        <label className="text-xs font-medium block mb-2">Fotografii</label>
+                        <div className="flex flex-wrap gap-2 mb-2">
+                          {(() => {
+                            let urls: string[] = [];
+                            try { urls = annForm.images ? JSON.parse(annForm.images) : []; } catch { urls = []; }
+                            return urls.map((url, i) => (
+                              <div key={i} style={{ position: "relative" }}>
+                                <img src={url} alt="" style={{ width: 72, height: 72, objectFit: "cover", borderRadius: 8, border: "1.5px solid var(--border)", display: "block" }} />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const updated = urls.filter((_, j) => j !== i);
+                                    setAnnForm(f => ({ ...f, images: updated.length > 0 ? JSON.stringify(updated) : null }));
+                                  }}
+                                  style={{ position: "absolute", top: -6, right: -6, width: 20, height: 20, borderRadius: "50%", background: "oklch(0.55 0.10 22)", border: "2px solid #fff", color: "#fff", cursor: "pointer", fontSize: 12, lineHeight: 1, padding: 0, display: "flex", alignItems: "center", justifyContent: "center" }}
+                                >×</button>
+                              </div>
+                            ));
+                          })()}
+                          {annImageFiles.map((f, i) => {
+                            const src = URL.createObjectURL(f);
+                            return (
+                              <div key={`new-${i}`} style={{ position: "relative" }}>
+                                <img src={src} alt="" style={{ width: 72, height: 72, objectFit: "cover", borderRadius: 8, border: "1.5px solid var(--vb-accent)", display: "block" }} />
+                                <button
+                                  type="button"
+                                  onClick={() => setAnnImageFiles(fs => fs.filter((_, j) => j !== i))}
+                                  style={{ position: "absolute", top: -6, right: -6, width: 20, height: 20, borderRadius: "50%", background: "oklch(0.55 0.10 22)", border: "2px solid #fff", color: "#fff", cursor: "pointer", fontSize: 12, lineHeight: 1, padding: 0, display: "flex", alignItems: "center", justifyContent: "center" }}
+                                >×</button>
+                              </div>
+                            );
+                          })}
+                          {(() => {
+                            let existing = 0;
+                            try { existing = annForm.images ? JSON.parse(annForm.images).length : 0; } catch { existing = 0; }
+                            const total = existing + annImageFiles.length;
+                            if (total >= 3) return null;
+                            return (
+                              <label style={{ width: 72, height: 72, borderRadius: 8, border: "2px dashed var(--border)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "var(--muted-foreground)", gap: 2, fontSize: 11 }}>
+                                <span style={{ fontSize: 20, lineHeight: 1 }}>+</span>
+                                <span style={{ fontWeight: 700, letterSpacing: 0.3 }}>FOTO</span>
+                                <input type="file" accept="image/*" multiple style={{ display: "none" }}
+                                  onChange={e => {
+                                    const picked = Array.from(e.target.files ?? []);
+                                    setAnnImageFiles(fs => [...fs, ...picked].slice(0, 3 - existing));
+                                    e.target.value = "";
+                                  }}
+                                />
+                              </label>
+                            );
+                          })()}
+                        </div>
+                        {annUploadStep && <p className="text-xs text-primary font-bold">{annUploadStep}</p>}
+                        <p className="text-xs text-muted-foreground">Maxim 3 fotografii · Imaginile cu chenar colorat sunt noi (nesalvate încă)</p>
+                      </div>
                       <label className="flex items-center gap-2 text-sm cursor-pointer">
                         <input type="checkbox" checked={annForm.resolved ?? false} onChange={e => setAnnForm(f => ({ ...f, resolved: e.target.checked }))} />
                         Marcat ca rezolvat
@@ -723,7 +797,7 @@ export default function AdminPage() {
                         <Button size="sm" onClick={() => saveAnn(ann.id)} disabled={savingAnn}>
                           {savingAnn ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />} Salvează
                         </Button>
-                        <Button size="sm" variant="ghost" onClick={() => setEditingAnnId(null)}>
+                        <Button size="sm" variant="ghost" onClick={() => { setEditingAnnId(null); setAnnImageFiles([]); setAnnUploadStep(""); }}>
                           <X size={13} /> Anulează
                         </Button>
                       </div>
