@@ -269,10 +269,12 @@ function EventCard({ event, onOpen, onDelta }: {
       {/* ── Header: image or gradient ── */}
       <div style={{ position: "relative", overflow: "hidden" }}>
         {event.image ? (
-          <img
-            src={event.image} alt={event.title}
-            style={{ width: "100%", height: "auto", maxHeight: 320, objectFit: "cover", display: "block" }}
-          />
+          <div style={{ background: "var(--background)", aspectRatio: "4/3", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+            <img
+              src={event.image} alt={event.title}
+              style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
+            />
+          </div>
         ) : (
           <div style={{ background: gradient, aspectRatio: aspect, position: "relative" }}>
             <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 52, opacity: 0.28 }}>📅</div>
