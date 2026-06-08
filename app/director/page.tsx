@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
@@ -795,14 +795,16 @@ export default function HomePage() {
       {/* ── Header ── */}
       <header className="vb-header">
         <div className="vb-header-inner">
-          <button className="vb-logo" onClick={() => { setSearch(""); setSelectedCats([]); setSortBy("newest"); }} style={{ background: "none", border: "none", cursor: "pointer", textAlign: "left" }}>
+          <a href="/" className="vb-logo" style={{ textDecoration: "none" }}>
             <div className="vb-logo-mark"><HouseLogo /></div>
             <div>
               <div className="vb-logo-title">Vecinii Băneasa</div>
               <div className="vb-logo-sub">Furnizorii cartierului nostru</div>
             </div>
-          </button>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, justifyContent: "flex-end" }}>
+          </a>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, justifyContent: "flex-end", flexWrap: "wrap" }}>
+            <a href="/evenimente" style={{ fontSize: 13, fontWeight: 700, color: "var(--vb-text-m)", textDecoration: "none", padding: "5px 8px", borderRadius: 8, whiteSpace: "nowrap" }}>📅 Evenimente</a>
+            <a href="/anunturi" style={{ fontSize: 13, fontWeight: 700, color: "var(--vb-text-m)", textDecoration: "none", padding: "5px 8px", borderRadius: 8, whiteSpace: "nowrap" }}>📢 Anunțuri</a>
             <div className="vb-search-wrap">
               <span className="vb-search-icon">🔍</span>
               <input className="vb-search-input" type="text" placeholder="Caută un furnizor..."

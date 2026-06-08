@@ -79,12 +79,31 @@ export const events = pgTable("events", {
   location: varchar("location", { length: 300 }),
   lat: real("lat"),
   lng: real("lng"),
+  attendees: integer("attendees").default(0).notNull(),
+  image: varchar("image", { length: 500 }),
   addedByNickname: varchar("added_by_nickname", { length: 100 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const announcements = pgTable("announcements", {
+  id: serial("id").primaryKey(),
+  type: varchar("type", { length: 10 }).notNull(), // "ofer" | "caut"
+  category: varchar("category", { length: 100 }).notNull(),
+  title: varchar("title", { length: 200 }).notNull(),
+  description: text("description"),
+  price: varchar("price", { length: 100 }),
+  images: text("images"), // JSON array of Cloudinary URLs
+  contact: varchar("contact", { length: 200 }),
+  zone: varchar("zone", { length: 100 }),
+  nickname: varchar("nickname", { length: 100 }),
+  resolved: boolean("resolved").default(false).notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 export type Category = typeof categories.$inferSelect;
 export type Provider = typeof providers.$inferSelect;
 export type Review = typeof reviews.$inferSelect;
+export type Announcement = typeof announcements.$inferSelect;
 export type NewProvider = typeof providers.$inferInsert;
 export type NewReview = typeof reviews.$inferInsert;

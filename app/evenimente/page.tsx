@@ -1,7 +1,42 @@
-"use client";
+﻿"use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
+
+const CLOUDINARY_CLOUD = "dovhwewtx";
+const CLOUDINARY_PRESET = "vecinii";
+
+async function compressImage(file: File): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 1200;
+        const scale = img.width > MAX ? MAX / img.width : 1;
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob(b => b ? resolve(b) : reject(new Error("toBlob failed")), "image/jpeg", 0.82);
+      };
+      img.onerror = reject;
+      img.src = ev.target!.result as string;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function uploadToCloudinary(file: File): Promise<string> {
+  const blob = await compressImage(file);
+  const fd = new FormData();
+  fd.append("file", blob, "event.jpg");
+  fd.append("upload_preset", CLOUDINARY_PRESET);
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`, { method: "POST", body: fd });
+  const data = await res.json();
+  return data.secure_url as string;
+}
 import { getNickname, setNickname } from "@/lib/user-identity";
 
 const ProviderMap = dynamic(
@@ -20,6 +55,8 @@ interface Event {
   location?: string | null;
   lat?: number | null;
   lng?: number | null;
+  attendees: number;
+  image?: string | null;
   addedByNickname?: string | null;
   createdAt: string;
 }
@@ -145,9 +182,35 @@ function Calendar({ selected, onSelect, eventDates }: {
 
 // ── Event card ────────────────────────────────────────────────────────────────
 
-function EventCard({ event }: { event: Event }) {
+function EventCard({ event, onShare }: { event: Event; onShare: () => void }) {
+  const [count, setCount] = useState(event.attendees ?? 0);
+  const [attended, setAttended] = useState(false);
+
+  useEffect(() => {
+    setAttended(localStorage.getItem(`vb-att-${event.id}`) === "1");
+  }, [event.id]);
+
+  async function handleAttend() {
+    if (attended) {
+      setAttended(false);
+      setCount(c => Math.max(0, c - 1));
+      localStorage.removeItem(`vb-att-${event.id}`);
+      await fetch("/api/events", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ unattendId: event.id }) });
+    } else {
+      setAttended(true);
+      setCount(c => c + 1);
+      localStorage.setItem(`vb-att-${event.id}`, "1");
+      await fetch("/api/events", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ attendId: event.id }) });
+    }
+  }
+
   return (
-    <div style={{ background: "var(--card)", border: "1.5px solid var(--border)", borderRadius: 14, padding: "18px 20px", boxShadow: "var(--vb-shadow)" }}>
+    <div style={{ background: "var(--card)", border: "1.5px solid var(--border)", borderRadius: 14, padding: "18px 20px", boxShadow: "var(--vb-shadow)", overflow: "hidden" }}>
+      {event.image && (
+        <div style={{ margin: "-18px -20px 16px", background: "var(--background)", lineHeight: 0 }}>
+          <img src={event.image} alt={event.title} style={{ width: "100%", height: "auto", maxHeight: 420, objectFit: "contain", display: "block" }} />
+        </div>
+      )}
       <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
         {/* Date block */}
         <div style={{ flexShrink: 0, background: "var(--vb-accent-lt)", borderRadius: 10, padding: "8px 12px", textAlign: "center", minWidth: 52 }}>
@@ -189,6 +252,37 @@ function EventCard({ event }: { event: Event }) {
           Adăugat de <strong>{event.addedByNickname}</strong>
         </div>
       )}
+      {/* Attendees + Particip */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 12, gap: 8 }}>
+        {count > 0 ? (
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "3px 10px", borderRadius: 20, background: "oklch(0.92 0.055 145)", color: "oklch(0.30 0.10 145)", fontSize: 12, fontWeight: 800 }}>
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "oklch(0.48 0.12 145)", display: "inline-block" }} />
+            {count} {count === 1 ? "vecin participă" : "vecini participă"}
+          </span>
+        ) : <span />}
+        <button
+          onClick={handleAttend}
+          style={{ padding: "6px 16px", borderRadius: 8, border: `1.5px solid ${attended ? "oklch(0.50 0.12 145)" : "var(--border)"}`, background: attended ? "oklch(0.92 0.055 145)" : "none", color: attended ? "oklch(0.30 0.10 145)" : "var(--vb-text-m)", fontSize: 12.5, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", transition: "all 0.15s", whiteSpace: "nowrap" }}
+        >
+          {attended ? "✓ Participi" : "Particip"}
+        </button>
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: "1px solid var(--border)", marginTop: 12, paddingTop: 8 }}>
+        <span />
+        <button
+          onClick={(e) => { e.stopPropagation(); onShare(); }}
+          title="Distribuie"
+          style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 34, height: 34, borderRadius: 8, border: "1.5px solid var(--border)", background: "var(--card)", cursor: "pointer", color: "var(--vb-text-m)", flexShrink: 0, transition: "border-color 0.15s, color 0.15s" }}
+          onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--vb-accent)"; e.currentTarget.style.color = "var(--vb-accent)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "var(--vb-text-m)"; }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+          </svg>
+        </button>
+      </div>
     </div>
   );
 }
@@ -196,6 +290,8 @@ function EventCard({ event }: { event: Event }) {
 // ── Add Event Modal ───────────────────────────────────────────────────────────
 
 function AddEventModal({ onClose, onAdded }: { onClose: () => void; onAdded: () => void }) {
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const mouseDownOnOverlay = useRef(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [date, setDate] = useState("");
@@ -208,6 +304,18 @@ function AddEventModal({ onClose, onAdded }: { onClose: () => void; onAdded: () 
   const [nickname, setNicknameState] = useState(getNickname());
   const [submitting, setSubmitting] = useState(false);
   const [err, setErr] = useState<Record<string, string>>({});
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState("");
+  const [imageUploading, setImageUploading] = useState(false);
+
+  function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImageFile(file);
+    const reader = new FileReader();
+    reader.onload = ev => setImagePreview(ev.target?.result as string);
+    reader.readAsDataURL(file);
+  }
 
   async function geocode() {
     if (!location.trim()) return;
@@ -237,17 +345,24 @@ function AddEventModal({ onClose, onAdded }: { onClose: () => void; onAdded: () 
 
     setSubmitting(true);
     if (nickname) setNickname(nickname);
+    let uploadedImage: string | null = null;
+    if (imageFile) {
+      setImageUploading(true);
+      try { uploadedImage = await uploadToCloudinary(imageFile); }
+      catch { setImageUploading(false); setSubmitting(false); return; }
+      setImageUploading(false);
+    }
     const res = await fetch("/api/events", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, description, date, time, location, lat, lng, addedByNickname: nickname || "Vecin anonim" }),
+      body: JSON.stringify({ title, description, date, time, location, lat, lng, image: uploadedImage, addedByNickname: nickname || "Vecin anonim" }),
     });
     setSubmitting(false);
     if (res.ok) { onAdded(); onClose(); }
   }
 
   return (
-    <div className="vb-overlay" onClick={onClose}>
+    <div className="vb-overlay" ref={overlayRef} onMouseDown={(e) => { mouseDownOnOverlay.current = e.target === overlayRef.current; }} onMouseUp={(e) => { if (mouseDownOnOverlay.current && e.target === overlayRef.current) onClose(); }}>
       <div className="vb-modal vb-modal-sm" onClick={e => e.stopPropagation()}>
         <div className="vb-modal-hd">
           <h2>Adaugă Eveniment</h2>
@@ -308,13 +423,34 @@ function AddEventModal({ onClose, onAdded }: { onClose: () => void; onAdded: () 
               <textarea className="vb-form-input" rows={3} placeholder="Detalii despre eveniment..." value={description} onChange={e => setDescription(e.target.value)} style={{ resize: "vertical" }} />
             </div>
 
+            {/* Image upload */}
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 800, color: "var(--vb-text-l)", display: "block", marginBottom: 5 }}>Imagine (opțional)</label>
+              {imagePreview ? (
+                <div style={{ position: "relative" }}>
+                  <img src={imagePreview} alt="preview" style={{ width: "100%", height: 160, objectFit: "cover", borderRadius: 10, display: "block" }} />
+                  <button
+                    type="button"
+                    onClick={() => { setImageFile(null); setImagePreview(""); }}
+                    style={{ position: "absolute", top: 6, right: 6, background: "rgba(0,0,0,0.6)", color: "#fff", border: "none", borderRadius: "50%", width: 26, height: 26, cursor: "pointer", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }}
+                  >✕</button>
+                </div>
+              ) : (
+                <label style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "18px 16px", border: "1.5px dashed var(--border)", borderRadius: 10, cursor: "pointer", color: "var(--vb-text-l)", fontSize: 13, background: "var(--background)" }}>
+                  <span style={{ fontSize: 22 }}>🖼️</span>
+                  <span>Click pentru a adăuga o imagine</span>
+                  <input type="file" accept="image/*" style={{ display: "none" }} onChange={handleImageChange} />
+                </label>
+              )}
+            </div>
+
             <div>
               <label style={{ fontSize: 12, fontWeight: 800, color: "var(--vb-text-l)", display: "block", marginBottom: 5 }}>Numele tău</label>
               <input className="vb-form-input" placeholder="Vecin anonim" value={nickname} onChange={e => setNicknameState(e.target.value)} />
             </div>
 
             <button type="submit" className="vb-btn-primary" disabled={submitting} style={{ padding: "11px 0", marginTop: 4 }}>
-              {submitting ? "Se adaugă..." : "Adaugă Evenimentul"}
+              {imageUploading ? "Se încarcă imaginea..." : submitting ? "Se adaugă..." : "Adaugă Evenimentul"}
             </button>
           </form>
         </div>
@@ -334,6 +470,22 @@ export default function EvenimentePage() {
   const [toast, setToast] = useState<string | null>(null);
 
   function flash(msg: string) { setToast(msg); setTimeout(() => setToast(null), 3000); }
+
+  async function shareEvent(ev: { id: number; title: string }) {
+    const url = `${window.location.origin}/evenimente`;
+    const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+    if (isMobile && navigator.share) {
+      try { await navigator.share({ title: ev.title, text: `📅 ${ev.title} — Vecinii Băneasa`, url }); return; }
+      catch (err: unknown) { if (err instanceof Error && err.name === "AbortError") return; }
+    }
+    try { await navigator.clipboard.writeText(url); }
+    catch {
+      const el = document.createElement("textarea"); el.value = url;
+      el.style.cssText = "position:fixed;opacity:0;top:0;left:0";
+      document.body.appendChild(el); el.select(); document.execCommand("copy"); document.body.removeChild(el);
+    }
+    flash("Link copiat! 🔗");
+  }
 
   const loadEvents = useCallback(async () => {
     setLoading(true);
@@ -361,14 +513,25 @@ export default function EvenimentePage() {
         <div className="vb-header-inner" style={{ justifyContent: "space-between" }}>
           <a href="/" style={{ textDecoration: "none" }}>
             <div className="vb-logo">
-              <div className="vb-logo-mark" style={{ fontSize: 20 }}>🏘️</div>
+              <div className="vb-logo-mark">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                  <path d="M3 11.5L12 3l9 8.5V20.5a.5.5 0 01-.5.5H15v-6H9v6H3.5a.5.5 0 01-.5-.5V11.5z"
+                    fill="oklch(0.62 0.082 36)" fillOpacity="0.42"
+                    stroke="oklch(0.62 0.082 36)" strokeOpacity="0.95"
+                    strokeWidth="0.8" strokeLinejoin="round"/>
+                </svg>
+              </div>
               <div>
                 <div className="vb-logo-title">Vecinii Băneasa</div>
                 <div className="vb-logo-sub">Evenimente</div>
               </div>
             </div>
           </a>
-          <button className="vb-btn-primary" onClick={() => setShowAdd(true)}>+ Adaugă</button>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <a href="/director" style={{ fontSize: 13, fontWeight: 700, color: "var(--vb-text-m)", textDecoration: "none", padding: "5px 8px", borderRadius: 8, whiteSpace: "nowrap" }}>🏘️ Director</a>
+            <a href="/anunturi" style={{ fontSize: 13, fontWeight: 700, color: "var(--vb-text-m)", textDecoration: "none", padding: "5px 8px", borderRadius: 8, whiteSpace: "nowrap" }}>📢 Anunțuri</a>
+            <button className="vb-btn-primary" onClick={() => setShowAdd(true)}>+ Adaugă</button>
+          </div>
         </div>
       </header>
 
@@ -406,8 +569,8 @@ export default function EvenimentePage() {
               <button className="vb-btn-primary" onClick={() => setShowAdd(true)}>+ Adaugă primul eveniment</button>
             </div>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              {events.map(e => <EventCard key={e.id} event={e} />)}
+            <div className="vb-events-grid">
+              {events.map(e => <EventCard key={e.id} event={e} onShare={() => shareEvent(e)} />)}
             </div>
           )}
         </div>
