@@ -1,13 +1,21 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { StarRating } from "@/components/star-rating";
-import { Loader2, Trash2, Edit2, X, Check, Phone, Mail, MapPin, Flag, CheckCircle } from "lucide-react";
+import { Loader2, Trash2, Edit2, X, Check, Phone, Mail, MapPin, Flag, CheckCircle, Calendar } from "lucide-react";
+
+const ProviderMap = dynamic(
+  () => import("@/components/provider-map").then((m) => m.ProviderMap),
+  { ssr: false }
+);
+
+const MONTHS_RO = ["Ian","Feb","Mar","Apr","Mai","Iun","Iul","Aug","Sep","Oct","Nov","Dec"];
 
 interface Category { id: number; name: string; icon: string; }
 
@@ -26,23 +34,53 @@ interface Report {
   resolved: boolean; createdAt: string;
 }
 
+interface Event {
+  id: number; title: string; description?: string | null;
+  date: string; time?: string | null; location?: string | null;
+  lat?: number | null; lng?: number | null;
+  addedByNickname?: string | null; createdAt: string;
+}
+
 const SESSION_KEY = "vb_admin_password";
+
+function tabStyle(active: boolean, danger = false) {
+  return {
+    padding: "8px 20px", borderRadius: 8, border: "1.5px solid",
+    fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit",
+    borderColor: active ? (danger ? "oklch(0.55 0.10 22)" : "var(--vb-accent)") : "var(--border)",
+    background: active ? (danger ? "oklch(0.55 0.10 22)" : "var(--vb-accent)") : "var(--card)",
+    color: active ? "#fff" : "var(--vb-text-m)",
+  } as React.CSSProperties;
+}
 
 export default function AdminPage() {
   const [password, setPassword] = useState("");
   const [authed, setAuthed] = useState(false);
   const [authError, setAuthError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [tab, setTab] = useState<"providers" | "events" | "reports">("providers");
+
+  // Providers state
   const [providers, setProviders] = useState<Provider[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [editingProviderId, setEditingProviderId] = useState<number | null>(null);
+  const [providerForm, setProviderForm] = useState<Partial<Provider>>({});
+  const [savingProvider, setSavingProvider] = useState(false);
+  const [deletingProviderId, setDeletingProviderId] = useState<number | null>(null);
+  const [providerGeoMsg, setProviderGeoMsg] = useState("");
+  const [providerGeocoding, setProviderGeocoding] = useState(false);
+
+  // Events state
+  const [events, setEvents] = useState<Event[]>([]);
+  const [editingEventId, setEditingEventId] = useState<number | null>(null);
+  const [eventForm, setEventForm] = useState<Partial<Event>>({});
+  const [savingEvent, setSavingEvent] = useState(false);
+  const [deletingEventId, setDeletingEventId] = useState<number | null>(null);
+  const [eventGeoMsg, setEventGeoMsg] = useState("");
+  const [eventGeocoding, setEventGeocoding] = useState(false);
+
+  // Reports state
   const [reports, setReports] = useState<Report[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [tab, setTab] = useState<"providers" | "reports">("providers");
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [editForm, setEditForm] = useState<Partial<Provider>>({});
-  const [saving, setSaving] = useState(false);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
-  const [geocoding, setGeocoding] = useState(false);
-  const [geocodeMsg, setGeocodeMsg] = useState("");
 
   function storedPassword() {
     return typeof window !== "undefined" ? sessionStorage.getItem(SESSION_KEY) ?? "" : "";
@@ -63,12 +101,14 @@ export default function AdminPage() {
     if (res.ok) {
       sessionStorage.setItem(SESSION_KEY, pw);
       setAuthed(true);
-      await Promise.all([loadProviders(), loadReports()]);
+      await Promise.all([loadProviders(), loadEvents(), loadReports()]);
     } else {
       setAuthError("Parolă incorectă.");
       setLoading(false);
     }
   }
+
+  // ── Providers ────────────────────────────────────────────────────────────────
 
   async function loadProviders() {
     setLoading(true);
@@ -78,17 +118,10 @@ export default function AdminPage() {
     setLoading(false);
   }
 
-  async function loadReports() {
-    const res = await fetch("/api/admin/reports", {
-      headers: { "x-admin-password": storedPassword() },
-    });
-    if (res.ok) setReports(await res.json());
-  }
-
-  function startEdit(p: Provider) {
-    setEditingId(p.id);
-    setGeocodeMsg("");
-    setEditForm({
+  function startEditProvider(p: Provider) {
+    setEditingProviderId(p.id);
+    setProviderGeoMsg("");
+    setProviderForm({
       name: p.name, phone: p.phone ?? "", email: p.email ?? "",
       description: p.description ?? "", services: p.services ?? "",
       categoryId: p.categoryId, address: p.address ?? "",
@@ -97,46 +130,103 @@ export default function AdminPage() {
     });
   }
 
-  async function geocodeAddress() {
-    const addr = editForm.address ?? "";
+  async function geocodeProvider() {
+    const addr = providerForm.address ?? "";
     if (!addr) return;
-    setGeocoding(true); setGeocodeMsg("");
+    setProviderGeocoding(true); setProviderGeoMsg("");
     try {
       const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(addr)}&format=json&limit=1`);
       const data = await res.json();
       if (data.length > 0) {
-        setEditForm((f) => ({ ...f, lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) }));
-        setGeocodeMsg(`✓ ${parseFloat(data[0].lat).toFixed(5)}, ${parseFloat(data[0].lon).toFixed(5)}`);
-      } else {
-        setGeocodeMsg("Adresa nu a fost găsită.");
-      }
-    } catch {
-      setGeocodeMsg("Eroare la geocodare.");
-    }
-    setGeocoding(false);
+        setProviderForm((f) => ({ ...f, lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) }));
+        setProviderGeoMsg(`✓ ${parseFloat(data[0].lat).toFixed(5)}, ${parseFloat(data[0].lon).toFixed(5)}`);
+      } else { setProviderGeoMsg("Adresa nu a fost găsită."); }
+    } catch { setProviderGeoMsg("Eroare la geocodare."); }
+    setProviderGeocoding(false);
   }
 
-  async function saveEdit(id: number) {
-    setSaving(true);
+  async function saveProvider(id: number) {
+    setSavingProvider(true);
     await fetch(`/api/providers/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json", "x-admin-password": storedPassword() },
-      body: JSON.stringify(editForm),
+      body: JSON.stringify(providerForm),
     });
-    setEditingId(null);
-    setSaving(false);
+    setEditingProviderId(null);
+    setSavingProvider(false);
     await loadProviders();
   }
 
   async function deleteProvider(id: number) {
     if (!confirm("Ești sigur că vrei să ștergi acest furnizor?")) return;
-    setDeletingId(id);
-    await fetch(`/api/providers/${id}`, {
-      method: "DELETE",
-      headers: { "x-admin-password": storedPassword() },
-    });
-    setDeletingId(null);
+    setDeletingProviderId(id);
+    await fetch(`/api/providers/${id}`, { method: "DELETE", headers: { "x-admin-password": storedPassword() } });
+    setDeletingProviderId(null);
     await loadProviders();
+  }
+
+  // ── Events ───────────────────────────────────────────────────────────────────
+
+  async function loadEvents() {
+    const res = await fetch("/api/events?all=1");
+    if (res.ok) setEvents(await res.json());
+  }
+
+  function startEditEvent(e: Event) {
+    setEditingEventId(e.id);
+    setEventGeoMsg("");
+    setEventForm({
+      title: e.title, description: e.description ?? "",
+      date: e.date, time: e.time ?? "", location: e.location ?? "",
+      lat: e.lat ?? null, lng: e.lng ?? null,
+      addedByNickname: e.addedByNickname ?? "",
+    });
+  }
+
+  async function geocodeEvent() {
+    const loc = eventForm.location ?? "";
+    if (!loc) return;
+    setEventGeocoding(true); setEventGeoMsg("");
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(loc)}&format=json&limit=1`);
+      const data = await res.json();
+      if (data.length > 0) {
+        setEventForm((f) => ({ ...f, lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) }));
+        setEventGeoMsg(`✓ ${parseFloat(data[0].lat).toFixed(5)}, ${parseFloat(data[0].lon).toFixed(5)}`);
+      } else { setEventGeoMsg("Adresa nu a fost găsită."); }
+    } catch { setEventGeoMsg("Eroare la geocodare."); }
+    setEventGeocoding(false);
+  }
+
+  async function saveEvent(id: number) {
+    setSavingEvent(true);
+    await fetch("/api/events", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "x-admin-password": storedPassword() },
+      body: JSON.stringify({ id, ...eventForm }),
+    });
+    setEditingEventId(null);
+    setSavingEvent(false);
+    await loadEvents();
+  }
+
+  async function deleteEvent(id: number) {
+    if (!confirm("Ești sigur că vrei să ștergi acest eveniment?")) return;
+    setDeletingEventId(id);
+    await fetch("/api/events", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json", "x-admin-password": storedPassword() },
+      body: JSON.stringify({ id }),
+    });
+    setDeletingEventId(null);
+    await loadEvents();
+  }
+
+  // ── Reports ──────────────────────────────────────────────────────────────────
+
+  async function loadReports() {
+    const res = await fetch("/api/admin/reports", { headers: { "x-admin-password": storedPassword() } });
+    if (res.ok) setReports(await res.json());
   }
 
   async function toggleResolved(r: Report) {
@@ -187,116 +277,89 @@ export default function AdminPage() {
         <h1 className="text-2xl font-bold">Admin — Vecinii Băneasa</h1>
         <div className="flex gap-2">
           <Badge variant="outline">{providers.length} furnizori</Badge>
-          {openReports.length > 0 && (
-            <Badge variant="destructive">{openReports.length} rapoarte noi</Badge>
-          )}
+          <Badge variant="outline">{events.length} evenimente</Badge>
+          {openReports.length > 0 && <Badge variant="destructive">{openReports.length} rapoarte noi</Badge>}
         </div>
       </div>
 
       {/* Tabs */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
-        <button
-          onClick={() => setTab("providers")}
-          style={{
-            padding: "8px 20px", borderRadius: 8, border: "1.5px solid",
-            fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit",
-            borderColor: tab === "providers" ? "var(--vb-accent)" : "var(--border)",
-            background: tab === "providers" ? "var(--vb-accent)" : "var(--card)",
-            color: tab === "providers" ? "#fff" : "var(--vb-text-m)",
-          }}
-        >
-          Furnizori ({providers.length})
-        </button>
-        <button
-          onClick={() => setTab("reports")}
-          style={{
-            padding: "8px 20px", borderRadius: 8, border: "1.5px solid",
-            fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit",
-            borderColor: tab === "reports" ? (openReports.length > 0 ? "oklch(0.55 0.10 22)" : "var(--vb-accent)") : "var(--border)",
-            background: tab === "reports" ? (openReports.length > 0 ? "oklch(0.55 0.10 22)" : "var(--vb-accent)") : "var(--card)",
-            color: tab === "reports" ? "#fff" : "var(--vb-text-m)",
-          }}
-        >
+      <div style={{ display: "flex", gap: 8, marginBottom: 24, flexWrap: "wrap" }}>
+        <button onClick={() => setTab("providers")} style={tabStyle(tab === "providers")}>Furnizori ({providers.length})</button>
+        <button onClick={() => setTab("events")} style={tabStyle(tab === "events")}>📅 Evenimente ({events.length})</button>
+        <button onClick={() => setTab("reports")} style={tabStyle(tab === "reports", openReports.length > 0)}>
           Rapoarte {openReports.length > 0 ? `(${openReports.length} noi)` : `(${reports.length})`}
         </button>
       </div>
 
       {loading ? (
         <div className="flex justify-center py-16"><Loader2 className="animate-spin" size={32} /></div>
+
       ) : tab === "providers" ? (
         <div className="flex flex-col gap-4">
           {providers.map((p) => (
             <Card key={p.id}>
               <CardContent className="p-4">
-                {editingId === p.id ? (
+                {editingProviderId === p.id ? (
                   <div className="flex flex-col gap-3">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="text-xs font-medium">Categorie</label>
-                        <select
-                          className="w-full rounded border border-input bg-background px-3 py-1.5 text-sm mt-1"
-                          value={editForm.categoryId}
-                          onChange={(e) => setEditForm((f) => ({ ...f, categoryId: parseInt(e.target.value) }))}
-                        >
-                          {categories.map((c) => (
-                            <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
-                          ))}
+                        <select className="w-full rounded border border-input bg-background px-3 py-1.5 text-sm mt-1"
+                          value={providerForm.categoryId}
+                          onChange={(e) => setProviderForm((f) => ({ ...f, categoryId: parseInt(e.target.value) }))}>
+                          {categories.map((c) => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
                         </select>
                       </div>
                       <div>
                         <label className="text-xs font-medium">Nume</label>
-                        <Input className="mt-1" value={editForm.name ?? ""} onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))} />
+                        <Input className="mt-1" value={providerForm.name ?? ""} onChange={(e) => setProviderForm((f) => ({ ...f, name: e.target.value }))} />
                       </div>
                       <div>
                         <label className="text-xs font-medium">Telefon</label>
-                        <Input className="mt-1" value={editForm.phone ?? ""} onChange={(e) => setEditForm((f) => ({ ...f, phone: e.target.value }))} />
+                        <Input className="mt-1" value={providerForm.phone ?? ""} onChange={(e) => setProviderForm((f) => ({ ...f, phone: e.target.value }))} />
                       </div>
                       <div>
                         <label className="text-xs font-medium">Email</label>
-                        <Input className="mt-1" value={editForm.email ?? ""} onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))} />
+                        <Input className="mt-1" value={providerForm.email ?? ""} onChange={(e) => setProviderForm((f) => ({ ...f, email: e.target.value }))} />
                       </div>
                     </div>
                     <div>
                       <label className="text-xs font-medium">Descriere</label>
-                      <Textarea className="mt-1" rows={2} value={editForm.description ?? ""} onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))} />
+                      <Textarea className="mt-1" rows={2} value={providerForm.description ?? ""} onChange={(e) => setProviderForm((f) => ({ ...f, description: e.target.value }))} />
                     </div>
                     <div>
                       <label className="text-xs font-medium">Servicii</label>
-                      <Textarea className="mt-1" rows={2} value={editForm.services ?? ""} onChange={(e) => setEditForm((f) => ({ ...f, services: e.target.value }))} />
+                      <Textarea className="mt-1" rows={2} value={providerForm.services ?? ""} onChange={(e) => setProviderForm((f) => ({ ...f, services: e.target.value }))} />
                     </div>
                     <div>
                       <label className="text-xs font-medium">Website</label>
-                      <Input className="mt-1" value={editForm.website ?? ""} placeholder="https://..." onChange={(e) => setEditForm((f) => ({ ...f, website: e.target.value }))} />
+                      <Input className="mt-1" value={providerForm.website ?? ""} placeholder="https://..." onChange={(e) => setProviderForm((f) => ({ ...f, website: e.target.value }))} />
                     </div>
                     <div>
                       <label className="text-xs font-medium">Instagram</label>
-                      <Input className="mt-1" value={editForm.social ?? ""} placeholder="@username sau URL complet" onChange={(e) => setEditForm((f) => ({ ...f, social: e.target.value }))} />
+                      <Input className="mt-1" value={providerForm.social ?? ""} placeholder="@username sau URL complet" onChange={(e) => setProviderForm((f) => ({ ...f, social: e.target.value }))} />
                     </div>
-                    <div className="sm:col-span-2">
+                    <div>
                       <label className="text-xs font-medium">Adresă + Pin hartă</label>
                       <div className="flex gap-2 mt-1">
-                        <Input
-                          value={editForm.address ?? ""}
-                          placeholder="Str. Exemplu nr. 1, București"
-                          onChange={(e) => { setEditForm((f) => ({ ...f, address: e.target.value })); setGeocodeMsg(""); }}
-                        />
-                        <Button type="button" size="sm" variant="outline" onClick={geocodeAddress} disabled={geocoding || !editForm.address} title="Găsește coordonatele">
-                          {geocoding ? <Loader2 size={13} className="animate-spin" /> : <MapPin size={13} />}
+                        <Input value={providerForm.address ?? ""} placeholder="Str. Exemplu nr. 1, București"
+                          onChange={(e) => { setProviderForm((f) => ({ ...f, address: e.target.value })); setProviderGeoMsg(""); }} />
+                        <Button type="button" size="sm" variant="outline" onClick={geocodeProvider} disabled={providerGeocoding || !providerForm.address} title="Găsește coordonatele">
+                          {providerGeocoding ? <Loader2 size={13} className="animate-spin" /> : <MapPin size={13} />}
                         </Button>
                       </div>
-                      {geocodeMsg && (
-                        <p className={`text-xs mt-1 ${editForm.lat ? "text-green-600" : "text-muted-foreground"}`}>{geocodeMsg}</p>
-                      )}
-                      {editForm.lat && editForm.lng && (
-                        <p className="text-xs text-muted-foreground mt-1">📍 {editForm.lat.toFixed(5)}, {editForm.lng.toFixed(5)}</p>
+                      {providerGeoMsg && <p className={`text-xs mt-1 ${providerForm.lat ? "text-green-600" : "text-muted-foreground"}`}>{providerGeoMsg}</p>}
+                      {providerForm.lat && providerForm.lng && (
+                        <div className="mt-2 rounded-lg overflow-hidden">
+                          <ProviderMap lat={providerForm.lat} lng={providerForm.lng} name={providerForm.name ?? ""} address={providerForm.address} />
+                        </div>
                       )}
                     </div>
                     <div className="flex gap-2">
-                      <Button size="sm" onClick={() => saveEdit(p.id)} disabled={saving}>
-                        {saving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
-                        Salvează
+                      <Button size="sm" onClick={() => saveProvider(p.id)} disabled={savingProvider}>
+                        {savingProvider ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />} Salvează
                       </Button>
-                      <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>
+                      <Button size="sm" variant="ghost" onClick={() => setEditingProviderId(null)}>
                         <X size={13} /> Anulează
                       </Button>
                     </div>
@@ -319,9 +382,9 @@ export default function AdminPage() {
                       </div>
                     </div>
                     <div className="flex gap-2 shrink-0">
-                      <Button size="sm" variant="outline" onClick={() => startEdit(p)}><Edit2 size={13} /></Button>
-                      <Button size="sm" variant="destructive" onClick={() => deleteProvider(p.id)} disabled={deletingId === p.id}>
-                        {deletingId === p.id ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+                      <Button size="sm" variant="outline" onClick={() => startEditProvider(p)}><Edit2 size={13} /></Button>
+                      <Button size="sm" variant="destructive" onClick={() => deleteProvider(p.id)} disabled={deletingProviderId === p.id}>
+                        {deletingProviderId === p.id ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
                       </Button>
                     </div>
                   </div>
@@ -330,6 +393,94 @@ export default function AdminPage() {
             </Card>
           ))}
         </div>
+
+      ) : tab === "events" ? (
+        <div className="flex flex-col gap-4">
+          {events.length === 0 && <p className="text-muted-foreground text-center py-16">Niciun eveniment.</p>}
+          {events.map((ev) => (
+            <Card key={ev.id}>
+              <CardContent className="p-4">
+                {editingEventId === ev.id ? (
+                  <div className="flex flex-col gap-3">
+                    <div>
+                      <label className="text-xs font-medium">Titlu</label>
+                      <Input className="mt-1" value={eventForm.title ?? ""} onChange={(e) => setEventForm((f) => ({ ...f, title: e.target.value }))} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs font-medium">Dată</label>
+                        <Input type="date" className="mt-1" value={eventForm.date ?? ""} onChange={(e) => setEventForm((f) => ({ ...f, date: e.target.value }))} />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium">Ora</label>
+                        <Input type="time" className="mt-1" value={eventForm.time ?? ""} onChange={(e) => setEventForm((f) => ({ ...f, time: e.target.value }))} />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium">Locație + Pin hartă</label>
+                      <div className="flex gap-2 mt-1">
+                        <Input value={eventForm.location ?? ""} placeholder="ex: Parcul Băneasa"
+                          onChange={(e) => { setEventForm((f) => ({ ...f, location: e.target.value })); setEventGeoMsg(""); }} />
+                        <Button type="button" size="sm" variant="outline" onClick={geocodeEvent} disabled={eventGeocoding || !eventForm.location} title="Găsește pe hartă">
+                          {eventGeocoding ? <Loader2 size={13} className="animate-spin" /> : <MapPin size={13} />}
+                        </Button>
+                      </div>
+                      {eventGeoMsg && <p className={`text-xs mt-1 ${eventForm.lat ? "text-green-600" : "text-muted-foreground"}`}>{eventGeoMsg}</p>}
+                      {eventForm.lat && eventForm.lng && (
+                        <div className="mt-2 rounded-lg overflow-hidden">
+                          <ProviderMap lat={eventForm.lat} lng={eventForm.lng} name={eventForm.title ?? "Eveniment"} address={eventForm.location} />
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium">Descriere</label>
+                      <Textarea className="mt-1" rows={3} value={eventForm.description ?? ""} onChange={(e) => setEventForm((f) => ({ ...f, description: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium">Adăugat de</label>
+                      <Input className="mt-1" value={eventForm.addedByNickname ?? ""} onChange={(e) => setEventForm((f) => ({ ...f, addedByNickname: e.target.value }))} />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button size="sm" onClick={() => saveEvent(ev.id)} disabled={savingEvent}>
+                        {savingEvent ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />} Salvează
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => setEditingEventId(null)}>
+                        <X size={13} /> Anulează
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        <Calendar size={13} className="text-muted-foreground" />
+                        <span className="text-xs font-semibold text-muted-foreground">
+                          {parseInt(ev.date.slice(8))} {MONTHS_RO[parseInt(ev.date.slice(5,7))-1]} {ev.date.slice(0,4)}
+                          {ev.time && ` · ${ev.time}`}
+                        </span>
+                        {new Date(ev.date) < new Date(new Date().toISOString().slice(0,10)) && (
+                          <Badge variant="secondary" className="text-xs">trecut</Badge>
+                        )}
+                      </div>
+                      <p className="font-semibold">{ev.title}</p>
+                      <div className="flex flex-col gap-0.5 mt-1 text-xs text-muted-foreground">
+                        {ev.location && <span className="flex items-center gap-1"><MapPin size={11} />{ev.location}</span>}
+                        {ev.addedByNickname && <span>Adăugat de: {ev.addedByNickname}</span>}
+                      </div>
+                    </div>
+                    <div className="flex gap-2 shrink-0">
+                      <Button size="sm" variant="outline" onClick={() => startEditEvent(ev)}><Edit2 size={13} /></Button>
+                      <Button size="sm" variant="destructive" onClick={() => deleteEvent(ev.id)} disabled={deletingEventId === ev.id}>
+                        {deletingEventId === ev.id ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
       ) : (
         <div className="flex flex-col gap-6">
           {reports.length === 0 ? (
@@ -369,9 +520,7 @@ export default function AdminPage() {
 }
 
 function ReportCard({ report, onResolve, onDelete }: {
-  report: Report;
-  onResolve: () => void;
-  onDelete: () => void;
+  report: Report; onResolve: () => void; onDelete: () => void;
 }) {
   const date = new Date(report.createdAt).toLocaleDateString("ro-RO", {
     day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
@@ -386,23 +535,14 @@ function ReportCard({ report, onResolve, onDelete }: {
               <span className="font-semibold">{report.providerName}</span>
               <span className="text-xs text-muted-foreground">{date}</span>
             </div>
-            <p className="text-sm text-muted-foreground mb-1">
-              <strong>Motive:</strong> {report.reasons}
-            </p>
-            {report.details && (
-              <p className="text-sm text-muted-foreground">
-                <strong>Detalii:</strong> {report.details}
-              </p>
-            )}
+            <p className="text-sm text-muted-foreground mb-1"><strong>Motive:</strong> {report.reasons}</p>
+            {report.details && <p className="text-sm text-muted-foreground"><strong>Detalii:</strong> {report.details}</p>}
           </div>
           <div className="flex gap-2 shrink-0">
             <Button size="sm" variant={report.resolved ? "outline" : "secondary"} onClick={onResolve}>
-              <CheckCircle size={13} />
-              {report.resolved ? "Redeschide" : "Rezolvat"}
+              <CheckCircle size={13} /> {report.resolved ? "Redeschide" : "Rezolvat"}
             </Button>
-            <Button size="sm" variant="destructive" onClick={onDelete}>
-              <Trash2 size={13} />
-            </Button>
+            <Button size="sm" variant="destructive" onClick={onDelete}><Trash2 size={13} /></Button>
           </div>
         </div>
       </CardContent>

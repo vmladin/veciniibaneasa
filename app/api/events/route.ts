@@ -6,10 +6,13 @@ import { gte, eq, asc } from "drizzle-orm";
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const date = searchParams.get("date");
+  const all = searchParams.get("all");
   const today = new Date().toISOString().slice(0, 10);
 
   const rows = date
     ? await db.select().from(events).where(eq(events.date, date)).orderBy(asc(events.time))
+    : all
+    ? await db.select().from(events).orderBy(asc(events.date), asc(events.time))
     : await db.select().from(events).where(gte(events.date, today)).orderBy(asc(events.date), asc(events.time));
 
   return NextResponse.json(rows);
@@ -31,6 +34,24 @@ export async function POST(req: NextRequest) {
     addedByNickname: addedByNickname?.trim() || "Vecin anonim",
   }).returning();
   return NextResponse.json(row, { status: 201 });
+}
+
+export async function PATCH(req: NextRequest) {
+  const pw = req.headers.get("x-admin-password");
+  if (pw !== process.env.ADMIN_PASSWORD) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { id, title, description, date, time, location, lat, lng, addedByNickname } = await req.json();
+  if (!id || !title?.trim() || !date) return NextResponse.json({ error: "Date lipsă" }, { status: 400 });
+  const [row] = await db.update(events).set({
+    title: title.trim(),
+    description: description?.trim() || null,
+    date,
+    time: time?.trim() || null,
+    location: location?.trim() || null,
+    lat: lat ?? null,
+    lng: lng ?? null,
+    addedByNickname: addedByNickname?.trim() || null,
+  }).where(eq(events.id, id)).returning();
+  return NextResponse.json(row);
 }
 
 export async function DELETE(req: NextRequest) {
