@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
@@ -50,18 +50,18 @@ interface Announcement {
 }
 
 const ANN_CATEGORIES: Record<string, { label: string; icon: string }> = {
-  mobila:         { label: "Mobilă & Deco",       icon: "ðŸ›‹ï¸" },
-  electrocasnice: { label: "Electrocasnice",       icon: "âš¡" },
-  electronice:    { label: "Electronică & IT",     icon: "ðŸ’»" },
-  haine:          { label: "Haine & Accesorii",   icon: "ðŸ‘—" },
-  carti:          { label: "Cărți & Jocuri",       icon: "ðŸ“š" },
-  sport:          { label: "Sport & Fitness",      icon: "ðŸƒ" },
-  copii:          { label: "Copii & Bebeluși",    icon: "ðŸ‘¶" },
-  gradinarit:     { label: "Grădinărit",           icon: "ðŸŒ±" },
-  auto:           { label: "Auto & Moto",          icon: "ðŸš—" },
-  animale:        { label: "Animale de companie",  icon: "ðŸ¾" },
-  servicii:       { label: "Servicii",             icon: "ðŸ”§" },
-  altele:         { label: "Altele",               icon: "ðŸ“¦" },
+  mobila:         { label: "Mobilă & Deco",       icon: "🛋️" },
+  electrocasnice: { label: "Electrocasnice",       icon: "⚡" },
+  electronice:    { label: "Electronică & IT",     icon: "💻" },
+  haine:          { label: "Haine & Accesorii",   icon: "👗" },
+  carti:          { label: "Cărți & Jocuri",       icon: "📚" },
+  sport:          { label: "Sport & Fitness",      icon: "🏃" },
+  copii:          { label: "Copii & Bebeluși",    icon: "👶" },
+  gradinarit:     { label: "Grădinărit",           icon: "🌱" },
+  auto:           { label: "Auto & Moto",          icon: "🚗" },
+  animale:        { label: "Animale de companie",  icon: "🐾" },
+  servicii:       { label: "Servicii",             icon: "🔧" },
+  altele:         { label: "Altele",               icon: "📦" },
 };
 
 const SESSION_KEY = "vb_admin_password";
@@ -210,7 +210,7 @@ export default function AdminPage() {
       const data = await res.json();
       if (data.length > 0) {
         setProviderForm((f) => ({ ...f, lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) }));
-        setProviderGeoMsg(`âœ“ ${parseFloat(data[0].lat).toFixed(5)}, ${parseFloat(data[0].lon).toFixed(5)}`);
+        setProviderGeoMsg(`✓ ${parseFloat(data[0].lat).toFixed(5)}, ${parseFloat(data[0].lon).toFixed(5)}`);
       } else { setProviderGeoMsg("Adresa nu a fost găsită."); }
     } catch { setProviderGeoMsg("Eroare la geocodare."); }
     setProviderGeocoding(false);
@@ -266,7 +266,7 @@ export default function AdminPage() {
       const data = await res.json();
       if (data.length > 0) {
         setEventForm((f) => ({ ...f, lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) }));
-        setEventGeoMsg(`âœ“ ${parseFloat(data[0].lat).toFixed(5)}, ${parseFloat(data[0].lon).toFixed(5)}`);
+        setEventGeoMsg(`✓ ${parseFloat(data[0].lat).toFixed(5)}, ${parseFloat(data[0].lon).toFixed(5)}`);
       } else { setEventGeoMsg("Adresa nu a fost găsită."); }
     } catch { setEventGeoMsg("Eroare la geocodare."); }
     setEventGeocoding(false);
@@ -421,7 +421,7 @@ export default function AdminPage() {
   return (
     <main className="max-w-5xl mx-auto px-4 py-8">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Admin â€” Vecinii Băneasa</h1>
+        <h1 className="text-2xl font-bold">Admin — Vecinii Băneasa</h1>
         <div className="flex gap-2">
           <Badge variant="outline">{providers.length} furnizori</Badge>
           <Badge variant="outline">{events.length} evenimente</Badge>
@@ -433,8 +433,8 @@ export default function AdminPage() {
       {/* Tabs */}
       <div style={{ display: "flex", gap: 8, marginBottom: 24, flexWrap: "wrap" }}>
         <button onClick={() => setTab("providers")} style={tabStyle(tab === "providers")}>Furnizori ({providers.length})</button>
-        <button onClick={() => setTab("events")} style={tabStyle(tab === "events")}>ðŸ“… Evenimente ({events.length})</button>
-        <button onClick={() => setTab("announcements")} style={tabStyle(tab === "announcements")}>ðŸ“¢ Anunțuri ({announcements.length})</button>
+        <button onClick={() => setTab("events")} style={tabStyle(tab === "events")}>📅 Evenimente ({events.length})</button>
+        <button onClick={() => setTab("announcements")} style={tabStyle(tab === "announcements")}>📢 Anunțuri ({announcements.length})</button>
         <button onClick={() => setTab("reports")} style={tabStyle(tab === "reports", openReports.length > 0)}>
           Rapoarte {openReports.length > 0 ? `(${openReports.length} noi)` : `(${reports.length})`}
         </button>
@@ -675,7 +675,7 @@ export default function AdminPage() {
         <div className="flex flex-col gap-4">
           {announcements.length === 0 && <p className="text-muted-foreground text-center py-16">Niciun anunț.</p>}
           {announcements.map((ann) => {
-            const cat = ANN_CATEGORIES[ann.category] ?? { icon: "ðŸ“¦", label: ann.category };
+            const cat = ANN_CATEGORIES[ann.category] ?? { icon: "📦", label: ann.category };
             const imgCount = (() => { try { return ann.images ? JSON.parse(ann.images).length : 0; } catch { return 0; } })();
             const isExpired = new Date(ann.expiresAt) < new Date();
             return (
@@ -688,8 +688,8 @@ export default function AdminPage() {
                           <label className="text-xs font-medium">Tip</label>
                           <select className="w-full rounded border border-input bg-background px-3 py-1.5 text-sm mt-1"
                             value={annForm.type} onChange={e => setAnnForm(f => ({ ...f, type: e.target.value }))}>
-                            <option value="ofer">âœ¦ Ofer</option>
-                            <option value="caut">âŸµ Caut</option>
+                            <option value="ofer">✦ Ofer</option>
+                            <option value="caut">⟵ Caut</option>
                           </select>
                         </div>
                         <div>
@@ -807,12 +807,12 @@ export default function AdminPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap mb-1">
                           <Badge variant={ann.type === "ofer" ? "default" : "secondary"} className="text-xs">
-                            {ann.type === "ofer" ? "âœ¦ OFER" : "âŸµ CAUT"}
+                            {ann.type === "ofer" ? "✦ OFER" : "⟵ CAUT"}
                           </Badge>
                           <Badge variant="outline" className="text-xs">{cat.icon} {cat.label}</Badge>
-                          {ann.resolved && <Badge variant="secondary" className="text-xs">âœ“ rezolvat</Badge>}
+                          {ann.resolved && <Badge variant="secondary" className="text-xs">✓ rezolvat</Badge>}
                           {isExpired && !ann.resolved && <Badge variant="destructive" className="text-xs">expirat</Badge>}
-                          {imgCount > 0 && <span className="text-xs text-muted-foreground">ðŸ–¼ {imgCount} foto</span>}
+                          {imgCount > 0 && <span className="text-xs text-muted-foreground">🖼 {imgCount} foto</span>}
                         </div>
                         <p className="font-semibold">{ann.title}</p>
                         <div className="flex flex-col gap-0.5 mt-1 text-xs text-muted-foreground">
