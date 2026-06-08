@@ -8,6 +8,7 @@ import {
   boolean,
   timestamp,
   unique,
+  date,
 } from "drizzle-orm/pg-core";
 
 export const categories = pgTable("categories", {
@@ -66,6 +67,17 @@ export const reports = pgTable("reports", {
   reasons: text("reasons").notNull(),
   details: text("details"),
   resolved: boolean("resolved").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const events = pgTable("events", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 200 }).notNull(),
+  description: text("description"),
+  date: date("date").notNull(),
+  time: varchar("time", { length: 10 }),
+  location: varchar("location", { length: 300 }),
+  addedByNickname: varchar("added_by_nickname", { length: 100 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
