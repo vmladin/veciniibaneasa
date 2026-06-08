@@ -59,9 +59,10 @@ const ANN_CATEGORIES: Record<string, { label: string; icon: string }> = {
   copii:          { label: "Copii & Bebeluși",    icon: "👶" },
   gradinarit:     { label: "Grădinărit",           icon: "🌱" },
   auto:           { label: "Auto & Moto",          icon: "🚗" },
-  animale:        { label: "Animale de companie",  icon: "🐾" },
-  servicii:       { label: "Servicii",             icon: "🔧" },
-  altele:         { label: "Altele",               icon: "📦" },
+  animale:          { label: "Animale de companie",    icon: "🐾" },
+  servicii:         { label: "Servicii",               icon: "🔧" },
+  agroalimentare:   { label: "Produse agroalimentare", icon: "🌾" },
+  altele:           { label: "Altele",                 icon: "📦" },
 };
 
 const SESSION_KEY = "vb_admin_password";

@@ -15,9 +15,10 @@ const CATEGORIES = [
   { value: "copii",          label: "Copii & Bebeluși",    icon: "👶" },
   { value: "gradinarit",     label: "Grădinărit",           icon: "🌱" },
   { value: "auto",           label: "Auto & Moto",          icon: "🚗" },
-  { value: "animale",        label: "Animale de companie",  icon: "🐾" },
-  { value: "servicii",       label: "Servicii",             icon: "🔧" },
-  { value: "altele",         label: "Altele",               icon: "📦" },
+  { value: "animale",          label: "Animale de companie",    icon: "🐾" },
+  { value: "servicii",         label: "Servicii",               icon: "🔧" },
+  { value: "agroalimentare",   label: "Produse agroalimentare", icon: "🌾" },
+  { value: "altele",           label: "Altele",                 icon: "📦" },
 ];
 
 const ZONES = ["Băneasa", "Pipera", "Floreasca", "Aviației", "Herăstrău", "Altă zonă"];
