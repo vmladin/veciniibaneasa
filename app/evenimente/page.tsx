@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import dynamic from "next/dynamic";
 import { getNickname, setNickname } from "@/lib/user-identity";
+
+const ProviderMap = dynamic(
+  () => import("@/components/provider-map").then((m) => m.ProviderMap),
+  { ssr: false }
+);
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -12,6 +18,8 @@ interface Event {
   date: string; // YYYY-MM-DD
   time?: string | null;
   location?: string | null;
+  lat?: number | null;
+  lng?: number | null;
   addedByNickname?: string | null;
   createdAt: string;
 }
@@ -171,8 +179,13 @@ function EventCard({ event }: { event: Event }) {
           )}
         </div>
       </div>
+      {(event.lat && event.lng) && (
+        <div style={{ marginTop: 14 }}>
+          <ProviderMap lat={event.lat} lng={event.lng} name={event.title} address={event.location ?? undefined} />
+        </div>
+      )}
       {event.addedByNickname && (
-        <div style={{ marginTop: 10, fontSize: 11.5, color: "var(--vb-text-l)", borderTop: "1px solid var(--border)", paddingTop: 8 }}>
+        <div style={{ fontSize: 11.5, color: "var(--vb-text-l)", borderTop: "1px solid var(--border)", paddingTop: 8 }}>
           Adăugat de <strong>{event.addedByNickname}</strong>
         </div>
       )}
@@ -188,9 +201,32 @@ function AddEventModal({ onClose, onAdded }: { onClose: () => void; onAdded: () 
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [location, setLocation] = useState("");
+  const [lat, setLat] = useState<number | null>(null);
+  const [lng, setLng] = useState<number | null>(null);
+  const [geocoding, setGeocoding] = useState(false);
+  const [geocodeMsg, setGeocodeMsg] = useState("");
   const [nickname, setNicknameState] = useState(getNickname());
   const [submitting, setSubmitting] = useState(false);
   const [err, setErr] = useState<Record<string, string>>({});
+
+  async function geocode() {
+    if (!location.trim()) return;
+    setGeocoding(true); setGeocodeMsg("");
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(location)}&format=json&limit=1`);
+      const data = await res.json();
+      if (data.length > 0) {
+        setLat(parseFloat(data[0].lat));
+        setLng(parseFloat(data[0].lon));
+        setGeocodeMsg("✓ Locație găsită pe hartă");
+      } else {
+        setGeocodeMsg("Adresa nu a fost găsită.");
+      }
+    } catch {
+      setGeocodeMsg("Eroare la geocodare.");
+    }
+    setGeocoding(false);
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -204,7 +240,7 @@ function AddEventModal({ onClose, onAdded }: { onClose: () => void; onAdded: () 
     const res = await fetch("/api/events", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, description, date, time, location, addedByNickname: nickname || "Vecin anonim" }),
+      body: JSON.stringify({ title, description, date, time, location, lat, lng, addedByNickname: nickname || "Vecin anonim" }),
     });
     setSubmitting(false);
     if (res.ok) { onAdded(); onClose(); }
@@ -239,7 +275,32 @@ function AddEventModal({ onClose, onAdded }: { onClose: () => void; onAdded: () 
 
             <div>
               <label style={{ fontSize: 12, fontWeight: 800, color: "var(--vb-text-l)", display: "block", marginBottom: 5 }}>Locație</label>
-              <input className="vb-form-input" placeholder="ex: Parcul din spatele blocului 7" value={location} onChange={e => setLocation(e.target.value)} />
+              <div style={{ display: "flex", gap: 8 }}>
+                <input
+                  className="vb-form-input"
+                  placeholder="ex: Parcul din spatele blocului 7"
+                  value={location}
+                  onChange={e => { setLocation(e.target.value); setLat(null); setLng(null); setGeocodeMsg(""); }}
+                  style={{ flex: 1 }}
+                />
+                <button
+                  type="button"
+                  onClick={geocode}
+                  disabled={geocoding || !location.trim()}
+                  title="Găsește pe hartă"
+                  style={{ flexShrink: 0, padding: "0 14px", borderRadius: 10, border: "1.5px solid var(--border)", background: "var(--card)", cursor: "pointer", fontSize: 17, opacity: !location.trim() ? 0.4 : 1, transition: "opacity 0.15s" }}
+                >
+                  {geocoding ? "…" : "📍"}
+                </button>
+              </div>
+              {geocodeMsg && (
+                <div style={{ fontSize: 12, marginTop: 4, color: lat ? "oklch(0.45 0.10 148)" : "var(--vb-text-l)" }}>{geocodeMsg}</div>
+              )}
+              {lat && lng && (
+                <div style={{ marginTop: 10, borderRadius: 10, overflow: "hidden" }}>
+                  <ProviderMap lat={lat} lng={lng} name={title || "Eveniment"} address={location} />
+                </div>
+              )}
             </div>
 
             <div>

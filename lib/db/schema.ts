@@ -77,6 +77,8 @@ export const events = pgTable("events", {
   date: date("date").notNull(),
   time: varchar("time", { length: 10 }),
   location: varchar("location", { length: 300 }),
+  lat: real("lat"),
+  lng: real("lng"),
   addedByNickname: varchar("added_by_nickname", { length: 100 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

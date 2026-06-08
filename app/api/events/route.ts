@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const { title, description, date, time, location, addedByNickname } = await req.json();
+  const { title, description, date, time, location, lat, lng, addedByNickname } = await req.json();
   if (!title?.trim() || !date) {
     return NextResponse.json({ error: "Titlu și dată sunt obligatorii" }, { status: 400 });
   }
@@ -26,6 +26,8 @@ export async function POST(req: NextRequest) {
     date,
     time: time?.trim() || null,
     location: location?.trim() || null,
+    lat: lat ?? null,
+    lng: lng ?? null,
     addedByNickname: addedByNickname?.trim() || "Vecin anonim",
   }).returning();
   return NextResponse.json(row, { status: 201 });
